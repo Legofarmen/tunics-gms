@@ -1,4 +1,5 @@
 pub mod outline;
+pub mod tunics;
 
 use rand::Rng;
 
@@ -56,8 +57,8 @@ impl<T> Tree<T> {
 }
 
 fn main() {
-    use outline::OutlineConf;
-    use outline::Treasure;
+    use tunics::OutlineConf;
+    use tunics::Treasure;
 
     let mut rng = rand::rngs::mock::StepRng::new(1, 3);
     //let mut rng = rand::rngs::ThreadRng::default();
