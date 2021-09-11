@@ -1,3 +1,5 @@
+use crate::event_tree::Action as EventAction;
+use crate::event_tree::Tree;
 use crate::outline::Outline;
 use std::collections::HashSet;
 
@@ -41,9 +43,13 @@ pub enum Action {
     HideChests,
 }
 
-impl super::Action for Action {
+impl EventAction for Action {
     type Item = ();
-    fn apply(&self, _heads: &mut Vec<super::Tree<()>>) {}
+    fn apply(&self, _heads: &mut Vec<Tree<()>>) {}
+}
+
+pub fn calc_join_weight(_tree: &Tree<()>) -> Box<dyn Fn(&Tree<()>) -> u32> {
+    Box::new(|_| 0)
 }
 
 pub struct OutlineConf {
