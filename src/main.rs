@@ -7,9 +7,10 @@ fn main() {
     use crate::tunics::calc_join_weight;
     use crate::tunics::OutlineConf;
     use crate::tunics::Treasure;
+    use rand::SeedableRng;
 
-    let mut rng = rand::rngs::mock::StepRng::new(1, 3);
-    //let mut rng = rand::rngs::ThreadRng::default();
+    let mut rng = rand::rngs::ThreadRng::default();
+    //let mut rng = rand::rngs::StdRng::seed_from_u64(3);
 
     let outline = OutlineConf {
         num_fairies: 1,
@@ -25,6 +26,6 @@ fn main() {
         println!("{:?}", action);
     }
 
-    let tree = Tree::from_actions(&mut rng, 4, &actions, calc_join_weight);
+    let tree = Tree::from_actions(&mut rng, 3, &actions, calc_join_weight);
     tree.show();
 }

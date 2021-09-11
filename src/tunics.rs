@@ -1,6 +1,7 @@
 use crate::event_tree::Action as EventAction;
 use crate::event_tree::Tree;
 use crate::outline::Outline;
+use rand::Rng;
 use std::collections::HashSet;
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
@@ -34,22 +35,153 @@ impl Treasure {
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Action {
     Boss,
+    Fairy,
+    CulDeSac,
+    Entrance,
+    Obstacle(Obstacle),
     Chest(Treasure),
     BigChest(Treasure),
     LockedDoor,
-    Fairy,
-    CulDeSac,
-    Obstacle(Obstacle),
     HideChests,
 }
 
-impl EventAction for Action {
-    type Item = ();
-    fn apply(&self, _heads: &mut Vec<Tree<()>>) {}
+#[derive(Clone, Copy, Debug)]
+pub enum Event {
+    Boss,
+    CulDeSac,
+    Fairy,
+    Obstacle(Obstacle),
+    Chest(Treasure),
+    BigChest(Treasure),
+    HiddenChest(Treasure),
+    LockedDoor,
+    Entrance,
 }
 
-pub fn calc_join_weight(_tree: &Tree<()>) -> Box<dyn Fn(&Tree<()>) -> u32> {
-    Box::new(|_| 0)
+fn leaf() -> Tree<Event> {
+    Tree::Branch(Vec::new())
+}
+
+fn event(event: Event, node: Tree<Event>) -> Tree<Event> {
+    Tree::Event(event, Box::new(node))
+}
+
+impl EventAction for Action {
+    type Item = Event;
+    fn apply<R: Rng>(&self, rng: &mut R, heads: &mut Vec<Tree<Event>>) {
+        use rand::prelude::SliceRandom;
+
+        match self {
+            Action::Boss => {
+                heads.push(event(Event::Boss, leaf()));
+            }
+            Action::CulDeSac => {
+                heads.push(event(Event::CulDeSac, leaf()));
+            }
+            Action::Fairy => {
+                heads.push(event(Event::Fairy, leaf()));
+            }
+            Action::Obstacle(obstacle) => {
+                for head in heads {
+                    head.prepend(Event::Obstacle(*obstacle));
+                }
+            }
+            Action::BigChest(treasure) => {
+                heads.push(event(Event::BigChest(*treasure), leaf()));
+            }
+            Action::Chest(treasure) => {
+                heads.push(event(Event::Chest(*treasure), leaf()));
+            }
+            Action::HideChests => {
+                fn accept(node: &mut Tree<Event>) {
+                    let treasure = match node {
+                        Tree::Event(event, next) => {
+                            accept(next);
+                            if let Event::Chest(treasure) = event {
+                                Some(treasure.clone())
+                            } else {
+                                None
+                            }
+                        }
+                        Tree::Branch(nodes) => {
+                            for node in nodes {
+                                accept(node);
+                            }
+                            None
+                        }
+                    };
+                    if let Some(treasure) = treasure {
+                        node.skip_event();
+                        node.prepend(Event::HiddenChest(treasure));
+                    }
+                }
+                for head in heads {
+                    accept(head);
+                }
+            }
+            Action::LockedDoor => {
+                heads.choose_mut(rng).unwrap().prepend(Event::LockedDoor);
+            }
+            Action::Entrance => {
+                let head = Tree::Event(
+                    Event::Entrance,
+                    Box::new(Tree::Branch(heads.drain(..).collect())),
+                );
+                heads.push(head)
+            }
+        }
+    }
+}
+
+pub fn f<P>(tree: &Tree<Event>, predicate: &P) -> Option<usize>
+where
+    P: Fn(&Event) -> bool,
+{
+    match tree {
+        Tree::Event(event, next) => {
+            if predicate(event) {
+                return Some(0);
+            } else {
+                next.find_event_depth(predicate).map(|depth| depth + 1)
+            }
+        }
+        Tree::Branch(nodes) => nodes
+            .iter()
+            .map(|node| node.find_event_depth(predicate).map(|depth| depth + 1))
+            .fold(None, |acc, depth| match (acc, depth) {
+                (Some(acc), Some(depth)) => Some(acc.min(depth)),
+                (acc, depth) => acc.or(depth),
+            }),
+    }
+}
+
+pub fn calc_join_weight(
+    tree: &Tree<Event>,
+    max_depth: usize,
+) -> Box<dyn Fn(&Tree<Event>) -> usize> {
+    let max_score = max_depth + 1;
+    fn big_key_pred(event: &Event) -> bool {
+        match event {
+            Event::Boss
+            | Event::BigChest(_)
+            | Event::HiddenChest(Treasure::BigKey)
+            | Event::Chest(Treasure::BigKey) => true,
+            _ => false,
+        }
+    }
+    let depth = tree.find_event_depth(&big_key_pred);
+    if depth.is_some() {
+        Box::new(move |node| node.find_event_depth(&big_key_pred).unwrap_or(max_score))
+    } else {
+        Box::new(move |node| {
+            let depth = node.find_event_depth(&big_key_pred).unwrap_or(max_score);
+            if depth > max_score {
+                println!("max {} depth {}", max_score, depth);
+                node.show();
+            }
+            max_score - depth
+        })
+    }
 }
 
 pub struct OutlineConf {
@@ -62,7 +194,7 @@ pub struct OutlineConf {
 impl OutlineConf {
     pub fn into_outline(self) -> Outline<Action> {
         let mut outline = Outline::new();
-        let entrance = outline.node(Action::Obstacle(Obstacle::Entrance));
+        let entrance = outline.node(Action::Entrance);
 
         for _ in 0..self.num_cul_de_sacs {
             let cul_de_sac = outline.node(Action::CulDeSac);
