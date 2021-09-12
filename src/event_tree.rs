@@ -47,7 +47,7 @@ where
     pub fn join(&mut self, other: Self) {
         match (self, other) {
             (Tree::Branch(ref mut u), Tree::Branch(mut v)) => {
-                u.extend(v.drain(..));
+                u.append(&mut v);
             }
             (Tree::Branch(ref mut u), event) => {
                 u.push(event);
@@ -80,7 +80,7 @@ where
         match self {
             Tree::Event(event, next) => {
                 if predicate(event) {
-                    return Some(0);
+                    Some(0)
                 } else {
                     next.find_event_depth(predicate).map(|depth| depth + 1)
                 }

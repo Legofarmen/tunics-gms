@@ -98,7 +98,7 @@ impl EventAction for Action {
                         Tree::Event(event, next) => {
                             accept(next);
                             if let Event::Chest(treasure) = event {
-                                Some(treasure.clone())
+                                Some(*treasure)
                             } else {
                                 None
                             }
@@ -140,7 +140,7 @@ where
     match tree {
         Tree::Event(event, next) => {
             if predicate(event) {
-                return Some(0);
+                Some(0)
             } else {
                 next.find_event_depth(predicate).map(|depth| depth + 1)
             }
@@ -161,13 +161,13 @@ pub fn calc_join_weight(
 ) -> Box<dyn Fn(&Tree<Event>) -> usize> {
     let max_score = max_depth + 1;
     fn big_key_pred(event: &Event) -> bool {
-        match event {
+        matches!(
+            event,
             Event::Boss
-            | Event::BigChest(_)
-            | Event::HiddenChest(Treasure::BigKey)
-            | Event::Chest(Treasure::BigKey) => true,
-            _ => false,
-        }
+                | Event::BigChest(_)
+                | Event::HiddenChest(Treasure::BigKey)
+                | Event::Chest(Treasure::BigKey)
+        )
     }
     let depth = tree.find_event_depth(&big_key_pred);
     if depth.is_some() {

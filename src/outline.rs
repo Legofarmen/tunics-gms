@@ -35,11 +35,11 @@ impl<A> Outline<A> {
     pub fn dep(&mut self, source: Index, dest: Index) {
         self.deps
             .entry(source)
-            .or_insert_with(|| HashSet::new())
+            .or_insert_with(HashSet::new)
             .insert(dest);
         self.rev_deps
             .entry(dest)
-            .or_insert_with(|| HashSet::new())
+            .or_insert_with(HashSet::new)
             .insert(source);
     }
     pub fn sorted(&self) -> Vec<Index> {
@@ -113,6 +113,12 @@ impl<A> Outline<A> {
     }
 }
 
+impl<A> Default for Outline<A> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<A: Clone> Outline<A> {
     pub fn get(&self, index: &Index) -> Option<A> {
         self.nodes.get(index.0).cloned()
@@ -135,10 +141,9 @@ impl<A: Clone + Eq> Outline<A> {
         //let mut rng = StepRng::new(19, 13);
         let mut results = Vec::new();
         while !open.is_empty() {
-            let index = open
+            let index = *open
                 .choose_weighted(rng, |index| weights.get(index).unwrap())
-                .unwrap()
-                .clone();
+                .unwrap();
             open.retain(|&x| x != index);
             closed.insert(index);
             open.extend(

@@ -21,10 +21,12 @@ fn main() {
     .into_outline();
     let actions = outline.action_sequence(&mut rng);
 
-    //outline.show();
+    /*
+    outline.show();
     for action in &actions {
         println!("{:?}", action);
     }
+    */
 
     let tree = Tree::from_actions(&mut rng, 3, &actions, calc_join_weight);
     tree.show();
