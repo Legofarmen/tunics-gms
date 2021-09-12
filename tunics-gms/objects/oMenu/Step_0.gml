@@ -21,6 +21,7 @@ if(keyboard_check_pressed(vk_enter)){
 		case 1:
 			//Join
 			instance_create_depth(x,y,0,oClient);
+			global.username = get_string("Enter a Username: ","");
 			room_goto_next();
 		break;
 		
