@@ -33,9 +33,13 @@ function receive_packet_client(buffer){
 			var _sock = buffer_read(argument0,buffer_u8);
 			var movex = buffer_read(argument0,buffer_u16);
 			var movey = buffer_read(argument0,buffer_u16);
+			var sprite= buffer_read(argument0,buffer_u16);
+			var image = buffer_read(argument0,buffer_u8);
 			_puppet = ds_map_find_value(socket_to_instanceid,_sock);
 			_puppet.x = movex;
 			_puppet.y = movey;
+			_puppet.sprite_index = sprite;
+			_puppet.image_index = image;
 		break;
 	}
 }
