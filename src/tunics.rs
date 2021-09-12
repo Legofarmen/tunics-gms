@@ -1,6 +1,7 @@
 use crate::event_tree::Action;
 use crate::event_tree::Tree;
 use crate::outline::Outline;
+use rand::Rng;
 use std::collections::HashSet;
 
 pub struct OutlineConf {
@@ -128,6 +129,7 @@ pub enum Event {
     Fairy,
     Obstacle(Obstacle),
     SmallChest(Treasure),
+    HiddenSmallChest(Treasure),
     BigChest(Treasure),
     HideSmallChests,
     LockedDoor,
@@ -151,11 +153,36 @@ pub fn calc_join_weight(
     } else {
         Box::new(move |node| {
             let depth = node.find_event_depth(&big_key_pred).unwrap_or(max_score);
-            if depth > max_score {
-                println!("max {} depth {}", max_score, depth);
-                node.show();
-            }
             max_score - depth
         })
     }
+}
+
+pub fn hide_chests<R: Rng>(rng: &mut R, tree: &mut Tree<Event>) {
+    fn visit<R: Rng>(rng: &mut R, tree: &mut Tree<Event>, is_below: bool) {
+        match tree {
+            Tree::Event(Event::HideSmallChests, next) => {
+                visit(rng, next, true);
+                *tree = (**next).clone();
+            }
+            Tree::Event(event @ Event::SmallChest(_), next) if is_below => {
+                let treasure = if let Event::SmallChest(treasure) = event {
+                    *treasure
+                } else {
+                    unreachable!()
+                };
+                if rng.gen_bool(0.5) {
+                    *event = Event::HiddenSmallChest(treasure);
+                }
+                visit(rng, next, true);
+            }
+            Tree::Event(_, next) => visit(rng, next, is_below),
+            Tree::Branch(nodes) => {
+                for node in nodes {
+                    visit(rng, node, is_below);
+                }
+            }
+        }
+    }
+    visit(rng, tree, false)
 }

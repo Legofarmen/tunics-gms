@@ -2,7 +2,7 @@ use rand::Rng;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum Tree<E>
 where
     E: Clone,
@@ -13,7 +13,7 @@ where
 
 impl<E> Tree<E>
 where
-    E: Clone + Debug,
+    E: Clone,
 {
     pub fn new() -> Self {
         Tree::Branch(Vec::new())
@@ -82,7 +82,12 @@ where
                 .fold(1, |acc, node| acc.max(node.max_depth() + 1)),
         }
     }
+}
 
+impl<E> Tree<E>
+where
+    E: Clone + Debug,
+{
     pub fn show(&self) {
         fn visit<E>(node: &Tree<E>, mark: bool, indent: usize)
         where

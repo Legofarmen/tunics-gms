@@ -5,12 +5,14 @@ pub mod tunics;
 fn main() {
     use crate::event_tree::Tree;
     use crate::tunics::calc_join_weight;
+    use crate::tunics::hide_chests;
     use crate::tunics::OutlineConf;
     use crate::tunics::Treasure;
     use rand::SeedableRng;
 
     let mut rng = rand::rngs::ThreadRng::default();
     //let mut rng = rand::rngs::StdRng::seed_from_u64(3);
+    let mut rng = rand::rngs::ThreadRng::default();
 
     let outline = OutlineConf {
         num_fairies: 1,
@@ -28,6 +30,7 @@ fn main() {
     }
     */
 
-    let tree = Tree::from_actions(&mut rng, 3, &actions, calc_join_weight);
+    let mut tree = Tree::from_actions(&mut rng, 3, &actions, calc_join_weight);
+    hide_chests(&mut rng, &mut tree);
     tree.show();
 }
