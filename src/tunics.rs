@@ -1,8 +1,108 @@
-use crate::event_tree::Action as EventAction;
+use crate::event_tree::Action;
 use crate::event_tree::Tree;
 use crate::outline::Outline;
 use rand::Rng;
 use std::collections::HashSet;
+
+pub struct OutlineConf {
+    pub num_small_keys: usize,
+    pub num_fairies: usize,
+    pub num_cul_de_sacs: usize,
+    pub treasures: HashSet<Treasure>,
+}
+
+impl OutlineConf {
+    pub fn into_outline(self) -> Outline<EventTreeAction> {
+        use EventTreeAction::*;
+
+        let mut outline = Outline::new();
+        let entrance = outline.node(AddEntrance);
+
+        for _ in 0..self.num_cul_de_sacs {
+            let cul_de_sac = outline.node(AddCulDeSac);
+            outline.dep(entrance, cul_de_sac);
+        }
+
+        for _ in 0..self.num_fairies {
+            let fairy = outline.node(AddFairy);
+            outline.dep(entrance, fairy);
+        }
+
+        let boss = outline.node(AddBoss);
+        let big_key = outline.node(AddChest(Treasure::BigKey));
+        outline.dep(big_key, boss);
+
+        let hide_chests = outline.node(HideChests);
+        let compass = outline.node(AddChest(Treasure::Compass));
+        outline.dep(hide_chests, boss);
+        outline.dep(compass, hide_chests);
+        outline.dep(entrance, compass);
+
+        for treasure in &self.treasures {
+            let big_chest = outline.node(AddBigChest(*treasure));
+            outline.dep(big_key, big_chest);
+            for obstacle in treasure.get_obstacles() {
+                let obstacle = outline.node(AddObstacle(*obstacle));
+                outline.dep(big_chest, obstacle);
+                outline.dep(obstacle, boss);
+            }
+        }
+
+        let mut last_locked_door = None;
+        for i in 0..self.num_small_keys {
+            let locked_door = outline.node(AddLockedDoor);
+            if let Some(last_locked_door) = last_locked_door {
+                outline.dep(locked_door, last_locked_door);
+            } else {
+                outline.dep(locked_door, big_key);
+            }
+            if i == self.num_small_keys - 1 {
+                let mut last_small_key = None;
+                for j in 0..self.num_small_keys {
+                    let small_key = outline.node(AddChest(Treasure::SmallKey));
+                    if let Some(last_small_key) = last_small_key {
+                        outline.dep(small_key, last_small_key);
+                    } else {
+                        outline.dep(small_key, locked_door);
+                    }
+                    if j == self.num_small_keys - 1 {
+                        outline.dep(entrance, small_key);
+                    }
+                    last_small_key = Some(small_key);
+                }
+            }
+            last_locked_door = Some(locked_door);
+        }
+        if self.num_small_keys == 0 {
+            outline.dep(entrance, big_key);
+        }
+
+        let map = outline.node(AddChest(Treasure::Map));
+        if let Some(weak_wall) = outline.index(AddObstacle(Obstacle::WeakWall)) {
+            let very_weak_wall = outline.index(AddObstacle(Obstacle::VeryWeakWall)).unwrap();
+            outline.dep(very_weak_wall, weak_wall);
+            outline.dep(map, very_weak_wall);
+        } else {
+            outline.dep(map, boss);
+        }
+        outline.dep(entrance, map);
+
+        outline
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+pub enum EventTreeAction {
+    AddBoss,
+    AddFairy,
+    AddCulDeSac,
+    AddEntrance,
+    AddObstacle(Obstacle),
+    AddChest(Treasure),
+    AddBigChest(Treasure),
+    AddLockedDoor,
+    HideChests,
+}
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Obstacle {
@@ -32,19 +132,6 @@ impl Treasure {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Action {
-    Boss,
-    Fairy,
-    CulDeSac,
-    Entrance,
-    Obstacle(Obstacle),
-    Chest(Treasure),
-    BigChest(Treasure),
-    LockedDoor,
-    HideChests,
-}
-
 #[derive(Clone, Copy, Debug)]
 pub enum Event {
     Boss,
@@ -58,41 +145,34 @@ pub enum Event {
     Entrance,
 }
 
-fn leaf() -> Tree<Event> {
-    Tree::Branch(Vec::new())
-}
-
-fn event(event: Event, node: Tree<Event>) -> Tree<Event> {
-    Tree::Event(event, Box::new(node))
-}
-
-impl EventAction for Action {
+impl Action for EventTreeAction {
     type Item = Event;
     fn apply<R: Rng>(&self, rng: &mut R, heads: &mut Vec<Tree<Event>>) {
         use rand::prelude::SliceRandom;
+        use EventTreeAction::*;
 
         match self {
-            Action::Boss => {
-                heads.push(event(Event::Boss, leaf()));
+            AddBoss => {
+                heads.push(Tree::new().prepended(Event::Boss));
             }
-            Action::CulDeSac => {
-                heads.push(event(Event::CulDeSac, leaf()));
+            AddCulDeSac => {
+                heads.push(Tree::new().prepended(Event::CulDeSac));
             }
-            Action::Fairy => {
-                heads.push(event(Event::Fairy, leaf()));
+            AddFairy => {
+                heads.push(Tree::new().prepended(Event::Fairy));
             }
-            Action::Obstacle(obstacle) => {
+            AddObstacle(obstacle) => {
                 for head in heads {
                     head.prepend(Event::Obstacle(*obstacle));
                 }
             }
-            Action::BigChest(treasure) => {
-                heads.push(event(Event::BigChest(*treasure), leaf()));
+            AddBigChest(treasure) => {
+                heads.push(Tree::new().prepended(Event::BigChest(*treasure)));
             }
-            Action::Chest(treasure) => {
-                heads.push(event(Event::Chest(*treasure), leaf()));
+            AddChest(treasure) => {
+                heads.push(Tree::new().prepended(Event::Chest(*treasure)));
             }
-            Action::HideChests => {
+            HideChests => {
                 fn accept(node: &mut Tree<Event>) {
                     let treasure = match node {
                         Tree::Event(event, next) => {
@@ -119,10 +199,10 @@ impl EventAction for Action {
                     accept(head);
                 }
             }
-            Action::LockedDoor => {
+            AddLockedDoor => {
                 heads.choose_mut(rng).unwrap().prepend(Event::LockedDoor);
             }
-            Action::Entrance => {
+            AddEntrance => {
                 let head = Tree::Event(
                     Event::Entrance,
                     Box::new(Tree::Branch(heads.drain(..).collect())),
@@ -181,92 +261,5 @@ pub fn calc_join_weight(
             }
             max_score - depth
         })
-    }
-}
-
-pub struct OutlineConf {
-    pub num_small_keys: usize,
-    pub num_fairies: usize,
-    pub num_cul_de_sacs: usize,
-    pub treasures: HashSet<Treasure>,
-}
-
-impl OutlineConf {
-    pub fn into_outline(self) -> Outline<Action> {
-        let mut outline = Outline::new();
-        let entrance = outline.node(Action::Entrance);
-
-        for _ in 0..self.num_cul_de_sacs {
-            let cul_de_sac = outline.node(Action::CulDeSac);
-            outline.dep(entrance, cul_de_sac);
-        }
-
-        for _ in 0..self.num_fairies {
-            let fairy = outline.node(Action::Fairy);
-            outline.dep(entrance, fairy);
-        }
-
-        let boss = outline.node(Action::Boss);
-        let big_key = outline.node(Action::Chest(Treasure::BigKey));
-        outline.dep(big_key, boss);
-
-        let hide_chests = outline.node(Action::HideChests);
-        let compass = outline.node(Action::Chest(Treasure::Compass));
-        outline.dep(hide_chests, boss);
-        outline.dep(compass, hide_chests);
-        outline.dep(entrance, compass);
-
-        for treasure in &self.treasures {
-            let big_chest = outline.node(Action::BigChest(*treasure));
-            outline.dep(big_key, big_chest);
-            for obstacle in treasure.get_obstacles() {
-                let obstacle = outline.node(Action::Obstacle(*obstacle));
-                outline.dep(big_chest, obstacle);
-                outline.dep(obstacle, boss);
-            }
-        }
-
-        let mut last_locked_door = None;
-        for i in 0..self.num_small_keys {
-            let locked_door = outline.node(Action::LockedDoor);
-            if let Some(last_locked_door) = last_locked_door {
-                outline.dep(locked_door, last_locked_door);
-            } else {
-                outline.dep(locked_door, big_key);
-            }
-            if i == self.num_small_keys - 1 {
-                let mut last_small_key = None;
-                for j in 0..self.num_small_keys {
-                    let small_key = outline.node(Action::Chest(Treasure::SmallKey));
-                    if let Some(last_small_key) = last_small_key {
-                        outline.dep(small_key, last_small_key);
-                    } else {
-                        outline.dep(small_key, locked_door);
-                    }
-                    if j == self.num_small_keys - 1 {
-                        outline.dep(entrance, small_key);
-                    }
-                    last_small_key = Some(small_key);
-                }
-            }
-            last_locked_door = Some(locked_door);
-        }
-        if self.num_small_keys == 0 {
-            outline.dep(entrance, big_key);
-        }
-
-        let map = outline.node(Action::Chest(Treasure::Map));
-        if let Some(weak_wall) = outline.index(Action::Obstacle(Obstacle::WeakWall)) {
-            let very_weak_wall = outline
-                .index(Action::Obstacle(Obstacle::VeryWeakWall))
-                .unwrap();
-            outline.dep(very_weak_wall, weak_wall);
-            outline.dep(map, very_weak_wall);
-        } else {
-            outline.dep(map, boss);
-        }
-        outline.dep(entrance, map);
-
-        outline
     }
 }

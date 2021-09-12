@@ -6,20 +6,24 @@ pub trait Action {
 }
 
 #[derive(Clone, Debug)]
-pub enum Tree<T> {
-    Event(T, Box<Tree<T>>),
-    Branch(Vec<Tree<T>>),
+pub enum Tree<E> {
+    Event(E, Box<Tree<E>>),
+    Branch(Vec<Tree<E>>),
 }
 
-impl<T> Tree<T>
+impl<E> Tree<E>
 where
-    T: Clone + Copy + std::fmt::Debug,
+    E: Copy,
 {
-    pub fn from_actions<R, A, W>(rng: &mut R, max_heads: usize, actions: &[A], w: W) -> Tree<T>
+    pub fn new() -> Self {
+        Tree::Branch(Vec::new())
+    }
+
+    pub fn from_actions<R, A, W>(rng: &mut R, max_heads: usize, actions: &[A], w: W) -> Tree<E>
     where
         R: Rng,
-        W: Fn(&Tree<T>, usize) -> Box<dyn Fn(&Tree<T>) -> usize>,
-        A: Action<Item = T>,
+        W: Fn(&Tree<E>, usize) -> Box<dyn Fn(&Tree<E>) -> usize>,
+        A: Action<Item = E>,
     {
         use rand::distributions::weighted::WeightedIndex;
         use rand::distributions::Distribution;
@@ -30,7 +34,7 @@ where
                 let head = heads.remove(rng.gen_range(0..heads.len()));
                 let max_depth = heads
                     .iter()
-                    .fold(0, |acc: usize, node: &Tree<T>| acc.max(node.max_depth()));
+                    .fold(0, |acc: usize, node: &Tree<E>| acc.max(node.max_depth()));
                 let calc_join_weight = w(&head, max_depth);
                 let dist = WeightedIndex::new(heads.iter().map(calc_join_weight)).unwrap();
                 heads.get_mut(dist.sample(rng)).unwrap().join(head);
@@ -62,8 +66,12 @@ where
         }
     }
 
-    pub fn prepend(&mut self, event: T) {
+    pub fn prepend(&mut self, event: E) {
         *self = Tree::Event(event, Box::new(self.clone()));
+    }
+
+    pub fn prepended(self, event: E) -> Self {
+        Tree::Event(event, Box::new(self))
     }
 
     pub fn skip_event(&mut self) {
@@ -74,8 +82,8 @@ where
 
     pub fn find_event_depth<'a, P>(&'a self, predicate: &P) -> Option<usize>
     where
-        P: Fn(&'a T) -> bool,
-        T: 'a,
+        P: Fn(&'a E) -> bool,
+        E: 'a,
     {
         match self {
             Tree::Event(event, next) => {
@@ -105,9 +113,9 @@ where
     }
 }
 
-impl<T: std::fmt::Debug> Tree<T> {
+impl<E: std::fmt::Debug> Tree<E> {
     pub fn show(&self) {
-        fn visit<T: std::fmt::Debug>(node: &Tree<T>, mark: bool, indent: usize) {
+        fn visit<E: std::fmt::Debug>(node: &Tree<E>, mark: bool, indent: usize) {
             let prefix = if mark { "+ " } else { "  " };
             match node {
                 Tree::Event(e, t) => {
@@ -125,6 +133,15 @@ impl<T: std::fmt::Debug> Tree<T> {
             }
         }
         visit(self, true, 0);
+    }
+}
+
+impl<E> Default for Tree<E>
+where
+    E: Copy,
+{
+    fn default() -> Self {
+        Tree::new()
     }
 }
 
