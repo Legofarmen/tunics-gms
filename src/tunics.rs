@@ -4,6 +4,9 @@ use crate::outline::Outline;
 use rand::Rng;
 use std::collections::HashSet;
 
+const NODE_DEPTH_WEIGHT: usize = 1;
+const BIG_KEY_DEPTH_WEIGHT: usize = 2;
+
 pub struct OutlineConf {
     pub num_small_keys: usize,
     pub num_fairies: usize,
@@ -138,9 +141,8 @@ pub enum Event {
 
 pub fn calc_join_weight(
     tree: &Tree<Event>,
-    max_depth: usize,
+    global_max_depth: usize,
 ) -> Box<dyn Fn(&Tree<Event>) -> usize> {
-    let max_score = max_depth + 1;
     fn big_key_pred(event: &Event) -> bool {
         matches!(
             event,
@@ -149,11 +151,24 @@ pub fn calc_join_weight(
     }
     let depth = tree.find_event_depth(&big_key_pred);
     if depth.is_some() {
-        Box::new(move |node| node.find_event_depth(&big_key_pred).unwrap_or(max_score))
+        Box::new(move |node| {
+            let node_max_depth = node.max_depth();
+            let big_key_depth = node
+                .find_event_depth(&big_key_pred)
+                .unwrap_or(global_max_depth);
+            NODE_DEPTH_WEIGHT * (global_max_depth - node_max_depth)
+                + BIG_KEY_DEPTH_WEIGHT * big_key_depth
+                + 1
+        })
     } else {
         Box::new(move |node| {
-            let depth = node.find_event_depth(&big_key_pred).unwrap_or(max_score);
-            max_score - depth
+            let node_max_depth = node.max_depth();
+            let big_key_depth = node
+                .find_event_depth(&big_key_pred)
+                .unwrap_or(global_max_depth);
+            NODE_DEPTH_WEIGHT * (global_max_depth - node_max_depth)
+                + BIG_KEY_DEPTH_WEIGHT * (global_max_depth - big_key_depth)
+                + 1
         })
     }
 }
