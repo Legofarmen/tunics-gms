@@ -20,8 +20,8 @@ if(keyboard_check_pressed(vk_enter)){
 		
 		case 1:
 			//Join
+			global.ip_address = get_string("Enter IP: ","");
 			instance_create_depth(x,y,0,oClient);
-			global.username = get_string("Enter a Username: ","");
 			room_goto_next();
 		break;
 		
