@@ -5,4 +5,5 @@ localFrame = 0;
 animationEnd = false;
 flash = 0;
 
+socket = 0;
 myname = "Player";

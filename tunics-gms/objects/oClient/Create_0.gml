@@ -1,5 +1,7 @@
 /// @description declare var
 enum network{
+	player_connect,
+	player_joined,
 	move
 }
 var localhost = "127.0.0.1";

@@ -26,3 +26,4 @@ life = 3;
 max_life = 3;
 ztargeting = false;
 ztarget_id = noone;
+socket = 0;

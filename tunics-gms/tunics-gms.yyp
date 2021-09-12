@@ -1,7 +1,6 @@
 {
   "resources": [
     {"id":{"name":"oClient","path":"objects/oClient/oClient.yy",},"order":2,},
-    {"id":{"name":"oZtarget","path":"objects/oZtarget/oZtarget.yy",},"order":6,},
     {"id":{"name":"sDeath","path":"sprites/sDeath/sDeath.yy",},"order":8,},
     {"id":{"name":"tsOutsideTiles","path":"tilesets/tsOutsideTiles/tsOutsideTiles.yy",},"order":0,},
     {"id":{"name":"sPlayerSword","path":"sprites/sPlayerSword/sPlayerSword.yy",},"order":18,},

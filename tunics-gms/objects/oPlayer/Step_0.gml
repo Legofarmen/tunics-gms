@@ -18,30 +18,8 @@ switch(state){
 	case "atk": PlayerStateAtk(); break;
 }
 
-if(inputZtarget){
-	//First, check for enemies in z target radius & direction
-	var _list = ds_list_create();
-	var _num = collision_circle_list(x,y,128,oEnemyMole,0,0,_list,1);
-	var _index = 0;
-	if(_num > 0){
-	//Second, choose the closest one
-		ztargeting = true;
-		ztarget_id = _list[| _index];
-	}else{
-		ztargeting = false;
-		ztarget_id = noone;
-		ds_list_destroy(_list);
-	}
-	//Third, either switch target or toggle off if num = 1.
-	if(ztargeting){
-		if(_num > 1){
-			if(_index>ds_list_size(_list)-1){
-				_index = 0;
-			}else{ _index++;}
-		}else{
-			ztargeting = false;
-			ztarget_id = noone;
-			ds_list_destroy(_list);
-		}
-	}
-}
+buffer_seek(oClient.buffer,buffer_seek_start,0);
+buffer_write(oClient.buffer,buffer_u8,network.move); //Send Packet ID
+buffer_write(oClient.buffer,buffer_u16,x); //Send X
+buffer_write(oClient.buffer,buffer_u16,y); //Send Y
+network_send_packet(oClient.client,oClient.buffer,buffer_tell(oClient.buffer));

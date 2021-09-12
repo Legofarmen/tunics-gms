@@ -15,7 +15,6 @@ if(keyboard_check_pressed(vk_enter)){
 		case 0:
 			//Create Game
 			instance_create_depth(x,y,0,oServer);
-			instance_create_depth(x,y,0,oClient);
 			room_goto_next();
 		break;
 		
