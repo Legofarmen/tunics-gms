@@ -1,3 +1,3 @@
 /// @description menu array
-menu = ["Create Game","Join Game","Quit"];
+menu = ["Host Game","Join Game","Singleplayer","Quit"];
 cur_index = 0;

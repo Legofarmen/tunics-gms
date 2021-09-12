@@ -13,7 +13,7 @@ cur_index = clamp(cur_index,0,array_length(menu)-1);
 if(keyboard_check_pressed(vk_enter)){
 	switch(cur_index){
 		case 0:
-			//Create Game
+			//Host Game
 			instance_create_depth(x,y,0,oServer);
 			room_goto_next();
 		break;
@@ -25,6 +25,10 @@ if(keyboard_check_pressed(vk_enter)){
 		break;
 		
 		case 2:
+			//Singleplayer
+			room_goto_next();
+			break;
+		case 3:
 			//Exit
 			game_end();
 		break;

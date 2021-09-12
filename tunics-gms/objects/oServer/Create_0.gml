@@ -1,4 +1,10 @@
 /// @description Initiate Server
+enum network{
+	player_connect,
+	player_joined,
+	player_disconnect,
+	move
+}
 #macro PORT 35120
 #macro MAX_CLIENTS 6
 network_create_server(network_socket_tcp,PORT,MAX_CLIENTS);
