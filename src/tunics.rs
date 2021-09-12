@@ -16,33 +16,33 @@ impl OutlineConf {
         use EventTreeAction::*;
 
         let mut outline = Outline::new();
-        let entrance = outline.node(AddEntrance);
+        let entrance = outline.node(PrependGrouped(Event::Entrance));
 
         for _ in 0..self.num_cul_de_sacs {
-            let cul_de_sac = outline.node(AddCulDeSac);
+            let cul_de_sac = outline.node(AddEvent(Event::CulDeSac));
             outline.dep(entrance, cul_de_sac);
         }
 
         for _ in 0..self.num_fairies {
-            let fairy = outline.node(AddFairy);
+            let fairy = outline.node(AddEvent(Event::Fairy));
             outline.dep(entrance, fairy);
         }
 
-        let boss = outline.node(AddBoss);
-        let big_key = outline.node(AddChest(Treasure::BigKey));
+        let boss = outline.node(AddEvent(Event::Boss));
+        let big_key = outline.node(AddEvent(Event::Chest(Treasure::BigKey)));
         outline.dep(big_key, boss);
 
         let hide_chests = outline.node(HideChests);
-        let compass = outline.node(AddChest(Treasure::Compass));
+        let compass = outline.node(AddEvent(Event::Chest(Treasure::Compass)));
         outline.dep(hide_chests, boss);
         outline.dep(compass, hide_chests);
         outline.dep(entrance, compass);
 
         for treasure in &self.treasures {
-            let big_chest = outline.node(AddBigChest(*treasure));
+            let big_chest = outline.node(AddEvent(Event::BigChest(*treasure)));
             outline.dep(big_key, big_chest);
             for obstacle in treasure.get_obstacles() {
-                let obstacle = outline.node(AddObstacle(*obstacle));
+                let obstacle = outline.node(PrependEach(Event::Obstacle(*obstacle)));
                 outline.dep(big_chest, obstacle);
                 outline.dep(obstacle, boss);
             }
@@ -50,7 +50,7 @@ impl OutlineConf {
 
         let mut last_locked_door = None;
         for i in 0..self.num_small_keys {
-            let locked_door = outline.node(AddLockedDoor);
+            let locked_door = outline.node(PrependAny(Event::LockedDoor));
             if let Some(last_locked_door) = last_locked_door {
                 outline.dep(locked_door, last_locked_door);
             } else {
@@ -59,7 +59,7 @@ impl OutlineConf {
             if i == self.num_small_keys - 1 {
                 let mut last_small_key = None;
                 for j in 0..self.num_small_keys {
-                    let small_key = outline.node(AddChest(Treasure::SmallKey));
+                    let small_key = outline.node(AddEvent(Event::Chest(Treasure::SmallKey)));
                     if let Some(last_small_key) = last_small_key {
                         outline.dep(small_key, last_small_key);
                     } else {
@@ -77,9 +77,11 @@ impl OutlineConf {
             outline.dep(entrance, big_key);
         }
 
-        let map = outline.node(AddChest(Treasure::Map));
-        if let Some(weak_wall) = outline.index(AddObstacle(Obstacle::WeakWall)) {
-            let very_weak_wall = outline.index(AddObstacle(Obstacle::VeryWeakWall)).unwrap();
+        let map = outline.node(AddEvent(Event::Chest(Treasure::Map)));
+        if let Some(weak_wall) = outline.index(PrependEach(Event::Obstacle(Obstacle::WeakWall))) {
+            let very_weak_wall = outline
+                .index(PrependEach(Event::Obstacle(Obstacle::VeryWeakWall)))
+                .unwrap();
             outline.dep(very_weak_wall, weak_wall);
             outline.dep(map, very_weak_wall);
         } else {
@@ -89,19 +91,6 @@ impl OutlineConf {
 
         outline
     }
-}
-
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub enum EventTreeAction {
-    AddBoss,
-    AddFairy,
-    AddCulDeSac,
-    AddEntrance,
-    AddObstacle(Obstacle),
-    AddChest(Treasure),
-    AddBigChest(Treasure),
-    AddLockedDoor,
-    HideChests,
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
@@ -132,7 +121,7 @@ impl Treasure {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Event {
     Boss,
     CulDeSac,
@@ -145,6 +134,15 @@ pub enum Event {
     Entrance,
 }
 
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+pub enum EventTreeAction {
+    AddEvent(Event),
+    PrependAny(Event),
+    PrependEach(Event),
+    PrependGrouped(Event),
+    HideChests,
+}
+
 impl Action for EventTreeAction {
     type Item = Event;
     fn apply<R: Rng>(&self, rng: &mut R, heads: &mut Vec<Tree<Event>>) {
@@ -152,25 +150,21 @@ impl Action for EventTreeAction {
         use EventTreeAction::*;
 
         match self {
-            AddBoss => {
-                heads.push(Tree::new().prepended(Event::Boss));
+            AddEvent(event) => {
+                heads.push(Tree::new().prepended(*event));
             }
-            AddCulDeSac => {
-                heads.push(Tree::new().prepended(Event::CulDeSac));
+            PrependAny(event) => {
+                heads.choose_mut(rng).unwrap().prepend(*event);
             }
-            AddFairy => {
-                heads.push(Tree::new().prepended(Event::Fairy));
-            }
-            AddObstacle(obstacle) => {
+            PrependEach(event) => {
                 for head in heads {
-                    head.prepend(Event::Obstacle(*obstacle));
+                    head.prepend(*event);
                 }
             }
-            AddBigChest(treasure) => {
-                heads.push(Tree::new().prepended(Event::BigChest(*treasure)));
-            }
-            AddChest(treasure) => {
-                heads.push(Tree::new().prepended(Event::Chest(*treasure)));
+            PrependGrouped(event) => {
+                let group = heads.drain(..).collect();
+                let new_head = Tree::Branch(group).prepended(*event);
+                heads.push(new_head)
             }
             HideChests => {
                 fn accept(node: &mut Tree<Event>) {
@@ -198,16 +192,6 @@ impl Action for EventTreeAction {
                 for head in heads {
                     accept(head);
                 }
-            }
-            AddLockedDoor => {
-                heads.choose_mut(rng).unwrap().prepend(Event::LockedDoor);
-            }
-            AddEntrance => {
-                let head = Tree::Event(
-                    Event::Entrance,
-                    Box::new(Tree::Branch(heads.drain(..).collect())),
-                );
-                heads.push(head)
             }
         }
     }
