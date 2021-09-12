@@ -1,6 +1,18 @@
+use crate::Room;
 use rand::Rng;
 use std::fmt::Debug;
 use std::hash::Hash;
+
+pub trait Visitor<E>
+where
+    E: Clone,
+{
+    type Room;
+
+    fn visit_event(&mut self, event: &E, next: Tree<E>) -> Self::Room;
+
+    fn visit_branch(&mut self, nodes: Vec<Tree<E>>) -> Self::Room;
+}
 
 #[derive(Clone)]
 pub enum Tree<E>
@@ -80,6 +92,16 @@ where
             Tree::Branch(nodes) => nodes
                 .iter()
                 .fold(1, |acc, node| acc.max(node.max_depth() + 1)),
+        }
+    }
+
+    pub fn accept<V>(self, visitor: &mut V) -> V::Room
+    where
+        V: Visitor<E>,
+    {
+        match self {
+            Tree::Event(event, next) => visitor.visit_event(&event, (*next).clone()),
+            Tree::Branch(nodes) => visitor.visit_branch(nodes),
         }
     }
 }

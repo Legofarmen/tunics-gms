@@ -1,6 +1,8 @@
 use crate::event_tree::Action;
 use crate::event_tree::Tree;
 use crate::outline::Outline;
+use crate::Lock;
+use crate::Room;
 use rand::Rng;
 use std::collections::HashSet;
 
@@ -51,7 +53,7 @@ impl OutlineConf {
 
         let mut last_locked_door = None;
         for i in 0..self.num_small_keys {
-            let locked_door = outline.node(Action::PrependAny(Event::LockedDoor));
+            let locked_door = outline.node(Action::PrependAny(Event::SmallKeyDoor));
             if let Some(last_locked_door) = last_locked_door {
                 outline.dep(locked_door, last_locked_door);
             } else {
@@ -102,6 +104,11 @@ pub enum Obstacle {
     Entrance,
     WeakWall,
     VeryWeakWall,
+    Boss,
+    Puzzle,
+    BigChest,
+    Fairy,
+    CulDeSac,
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
@@ -135,8 +142,78 @@ pub enum Event {
     HiddenSmallChest(Treasure),
     BigChest(Treasure),
     HideSmallChests,
-    LockedDoor,
+    SmallKeyDoor,
     Entrance,
+}
+
+impl Event {
+    pub fn apply(&self, room: &mut Room<Treasure, Obstacle, Lock>) -> bool {
+        match self {
+            Event::Boss
+                if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
+            {
+                room.obstacle = Some(Obstacle::Boss);
+                room.entrance = Some(Lock::BigKey);
+                true
+            }
+            Event::Obstacle(obstacle) if room.entrance.is_none() && room.obstacle.is_none() => {
+                room.obstacle = Some(*obstacle);
+                if room.chest.is_some() {
+                    room.far_side_chest = Some(true);
+                }
+                true
+            }
+            Event::SmallChest(treasure) if room.entrance.is_none() && room.chest.is_none() => {
+                room.chest = Some(*treasure);
+                if room.obstacle.is_some() {
+                    room.far_side_chest = Some(false);
+                }
+                true
+            }
+            Event::HiddenSmallChest(treasure)
+                if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
+            {
+                room.chest = Some(*treasure);
+                room.obstacle = Some(Obstacle::Puzzle);
+                true
+            }
+            Event::BigChest(treasure)
+                if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
+            {
+                room.chest = Some(*treasure);
+                room.obstacle = Some(Obstacle::BigChest);
+                true
+            }
+            Event::HideSmallChests => {
+                unimplemented!("should removed prior to this");
+            }
+            Event::SmallKeyDoor if room.entrance.is_none() => {
+                room.entrance = Some(Lock::SmallKey);
+                true
+            }
+            Event::Entrance
+                if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
+            {
+                room.obstacle = Some(Obstacle::Entrance);
+                true
+            }
+            Event::CulDeSac
+                if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
+            {
+                *room = Room::with_exits(vec![room.clone()]);
+                room.obstacle = Some(Obstacle::CulDeSac);
+                true
+            }
+            Event::Fairy
+                if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
+            {
+                *room = Room::with_exits(vec![room.clone()]);
+                room.obstacle = Some(Obstacle::Fairy);
+                true
+            }
+            _ => false,
+        }
+    }
 }
 
 pub fn calc_join_weight(
