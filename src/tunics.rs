@@ -197,28 +197,6 @@ impl Action for EventTreeAction {
     }
 }
 
-pub fn f<P>(tree: &Tree<Event>, predicate: &P) -> Option<usize>
-where
-    P: Fn(&Event) -> bool,
-{
-    match tree {
-        Tree::Event(event, next) => {
-            if predicate(event) {
-                Some(0)
-            } else {
-                next.find_event_depth(predicate).map(|depth| depth + 1)
-            }
-        }
-        Tree::Branch(nodes) => nodes
-            .iter()
-            .map(|node| node.find_event_depth(predicate).map(|depth| depth + 1))
-            .fold(None, |acc, depth| match (acc, depth) {
-                (Some(acc), Some(depth)) => Some(acc.min(depth)),
-                (acc, depth) => acc.or(depth),
-            }),
-    }
-}
-
 pub fn calc_join_weight(
     tree: &Tree<Event>,
     max_depth: usize,
