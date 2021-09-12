@@ -85,13 +85,15 @@ where
 }
 
 pub trait Ev: Clone {
-    type Room: Ro;
+    type Room: Ro + Default;
 
     fn apply(&self, room: &mut Self::Room) -> bool;
 }
 
 pub trait Ro: Sized {
-    fn with_exits(exits: Vec<Self>) -> Self;
+    fn add_exits<I>(self, exits: I) -> Self
+    where
+        I: IntoIterator<Item = Self>;
 }
 
 fn room_tree<E: Clone + Ev>(tree: Tree<E>) -> E::Room {
@@ -105,7 +107,7 @@ fn room_tree<E: Clone + Ev>(tree: Tree<E>) -> E::Room {
             if event.apply(&mut room) {
                 room
             } else {
-                let mut room = Self::Room::with_exits(vec![room]);
+                let mut room = Self::Room::default().add_exits(vec![room]);
                 event.apply(&mut room);
                 room
             }
@@ -113,21 +115,19 @@ fn room_tree<E: Clone + Ev>(tree: Tree<E>) -> E::Room {
 
         fn visit_branch(&mut self, nodes: Vec<Tree<E>>) -> E::Room {
             let nodes: Vec<_> = nodes.into_iter().map(|node| node.accept(self)).collect();
-            E::Room::with_exits(nodes)
+            E::Room::default().add_exits(nodes)
         }
     }
     tree.accept(&mut V)
 }
 
 impl Ro for Room<Treasure, Obstacle, Lock> {
-    fn with_exits(exits: Vec<Self>) -> Self {
-        Room {
-            entrance: None,
-            exits,
-            chest: None,
-            obstacle: None,
-            far_side_chest: None,
-        }
+    fn add_exits<I>(mut self, exits: I) -> Self
+    where
+        I: IntoIterator<Item = Self>,
+    {
+        self.exits.extend(exits);
+        self
     }
 }
 
@@ -187,14 +187,14 @@ impl Ev for Event {
             Event::CulDeSac
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
-                *room = Room::with_exits(vec![room.clone()]);
+                *room = Room::default().add_exits(vec![room.clone()]);
                 room.obstacle = Some(Obstacle::CulDeSac);
                 true
             }
             Event::Fairy
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
-                *room = Room::with_exits(vec![room.clone()]);
+                *room = Room::default().add_exits(vec![room.clone()]);
                 room.obstacle = Some(Obstacle::Fairy);
                 true
             }
