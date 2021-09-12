@@ -1,51 +1,22 @@
 use rand::Rng;
-
-pub trait Action {
-    type Item;
-    fn apply<R: Rng>(&self, rng: &mut R, heads: &mut Vec<Tree<Self::Item>>);
-}
+use std::fmt::Debug;
+use std::hash::Hash;
 
 #[derive(Clone, Debug)]
-pub enum Tree<E> {
+pub enum Tree<E>
+where
+    E: Clone,
+{
     Event(E, Box<Tree<E>>),
     Branch(Vec<Tree<E>>),
 }
 
 impl<E> Tree<E>
 where
-    E: Copy,
+    E: Clone + Debug,
 {
     pub fn new() -> Self {
         Tree::Branch(Vec::new())
-    }
-
-    pub fn from_actions<R, A, W>(rng: &mut R, max_heads: usize, actions: &[A], w: W) -> Tree<E>
-    where
-        R: Rng,
-        W: Fn(&Tree<E>, usize) -> Box<dyn Fn(&Tree<E>) -> usize>,
-        A: Action<Item = E>,
-    {
-        use rand::distributions::weighted::WeightedIndex;
-        use rand::distributions::Distribution;
-
-        let mut heads = Vec::new();
-        for action in actions {
-            while heads.len() > max_heads {
-                let head = heads.remove(rng.gen_range(0..heads.len()));
-                let max_depth = heads
-                    .iter()
-                    .fold(0, |acc: usize, node: &Tree<E>| acc.max(node.max_depth()));
-                let calc_join_weight = w(&head, max_depth);
-                let dist = WeightedIndex::new(heads.iter().map(calc_join_weight)).unwrap();
-                heads.get_mut(dist.sample(rng)).unwrap().join(head);
-            }
-            action.apply(rng, &mut heads);
-        }
-        if heads.len() == 1 {
-            heads.pop().unwrap()
-        } else {
-            Tree::Branch(heads)
-        }
     }
 
     pub fn join(&mut self, other: Self) {
@@ -111,11 +82,12 @@ where
                 .fold(1, |acc, node| acc.max(node.max_depth() + 1)),
         }
     }
-}
 
-impl<E: std::fmt::Debug> Tree<E> {
     pub fn show(&self) {
-        fn visit<E: std::fmt::Debug>(node: &Tree<E>, mark: bool, indent: usize) {
+        fn visit<E>(node: &Tree<E>, mark: bool, indent: usize)
+        where
+            E: Clone + Debug,
+        {
             let prefix = if mark { "+ " } else { "  " };
             match node {
                 Tree::Event(e, t) => {
@@ -136,12 +108,84 @@ impl<E: std::fmt::Debug> Tree<E> {
     }
 }
 
+impl<E> Tree<E>
+where
+    E: Copy + Debug + Eq + Hash,
+{
+    pub fn from_actions<R, W>(rng: &mut R, max_heads: usize, actions: &[Action<E>], w: W) -> Tree<E>
+    where
+        R: Rng,
+        W: Fn(&Tree<E>, usize) -> Box<dyn Fn(&Tree<E>) -> usize>,
+    {
+        use rand::distributions::weighted::WeightedIndex;
+        use rand::distributions::Distribution;
+
+        let mut heads = Vec::new();
+        for action in actions {
+            while heads.len() > max_heads {
+                let head = heads.remove(rng.gen_range(0..heads.len()));
+                let max_depth = heads
+                    .iter()
+                    .fold(0, |acc: usize, node: &Tree<E>| acc.max(node.max_depth()));
+                let calc_join_weight = w(&head, max_depth);
+                let dist = WeightedIndex::new(heads.iter().map(calc_join_weight)).unwrap();
+                heads.get_mut(dist.sample(rng)).unwrap().join(head);
+            }
+            action.apply(rng, &mut heads);
+        }
+        if heads.len() == 1 {
+            heads.pop().unwrap()
+        } else {
+            Tree::Branch(heads)
+        }
+    }
+}
+
 impl<E> Default for Tree<E>
 where
-    E: Copy,
+    E: Copy + Debug,
 {
     fn default() -> Self {
         Tree::new()
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+pub enum Action<E>
+where
+    E: Debug,
+{
+    AddEvent(E),
+    PrependAny(E),
+    PrependEach(E),
+    PrependGrouped(E),
+}
+
+impl<E> Action<E>
+where
+    E: Copy + Debug + Eq + Hash,
+{
+    fn apply<R: Rng>(&self, rng: &mut R, heads: &mut Vec<Tree<E>>) {
+        use rand::prelude::SliceRandom;
+
+        match self {
+            Action::AddEvent(event) => {
+                heads.push(Tree::new().prepended(*event));
+            }
+            Action::PrependAny(event) => {
+                heads.choose_mut(rng).unwrap().prepend(*event);
+            }
+            Action::PrependEach(event) => {
+                for head in heads {
+                    head.prepend(*event);
+                }
+            }
+            Action::PrependGrouped(event) => {
+                let group = heads.drain(..).collect();
+                let new_head = Tree::Branch(group).prepended(*event);
+                heads.push(new_head)
+            }
+        }
     }
 }
 

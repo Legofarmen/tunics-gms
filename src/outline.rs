@@ -1,3 +1,4 @@
+use crate::event_tree::Action;
 use bitvec::bitvec;
 use bitvec::vec::BitVec;
 use lazy_static::lazy_static;
@@ -13,13 +14,19 @@ lazy_static! {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Index(usize);
 
-pub struct Outline<A> {
-    nodes: Vec<A>,
+pub struct Outline<E>
+where
+    E: std::fmt::Debug,
+{
+    nodes: Vec<Action<E>>,
     deps: HashMap<Index, HashSet<Index>>,
     rev_deps: HashMap<Index, HashSet<Index>>,
 }
 
-impl<A> Outline<A> {
+impl<E> Outline<E>
+where
+    E: std::fmt::Debug,
+{
     pub fn new() -> Self {
         Outline {
             nodes: Vec::new(),
@@ -27,7 +34,7 @@ impl<A> Outline<A> {
             rev_deps: HashMap::new(),
         }
     }
-    pub fn node(&mut self, action: A) -> Index {
+    pub fn node(&mut self, action: Action<E>) -> Index {
         let i = self.nodes.len();
         self.nodes.push(action);
         Index(i)
@@ -86,7 +93,7 @@ impl<A> Outline<A> {
     pub fn indices(&self) -> impl Iterator<Item = Index> {
         (0..self.nodes.len()).map(Index)
     }
-    pub fn nodes(&self) -> &[A] {
+    pub fn nodes(&self) -> &[Action<E>] {
         self.nodes.as_slice()
     }
     pub fn deps(&self, source: Index) -> &HashSet<Index> {
@@ -113,23 +120,32 @@ impl<A> Outline<A> {
     }
 }
 
-impl<A> Default for Outline<A> {
+impl<E> Default for Outline<E>
+where
+    E: std::fmt::Debug,
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<A: Clone> Outline<A> {
-    pub fn get(&self, index: &Index) -> Option<A> {
+impl<E> Outline<E>
+where
+    E: Clone + std::fmt::Debug,
+{
+    pub fn get(&self, index: &Index) -> Option<Action<E>> {
         self.nodes.get(index.0).cloned()
     }
 }
 
-impl<A: Clone + Eq> Outline<A> {
-    pub fn index(&self, action: A) -> Option<Index> {
+impl<E> Outline<E>
+where
+    E: Clone + std::fmt::Debug + Eq,
+{
+    pub fn index(&self, action: Action<E>) -> Option<Index> {
         self.nodes.iter().position(|a| *a == action).map(Index)
     }
-    pub fn action_sequence<R: Rng>(&self, rng: &mut R) -> Vec<A> {
+    pub fn action_sequence<R: Rng>(&self, rng: &mut R) -> Vec<Action<E>> {
         let weights = self.reachable_counts();
         let mut open = Vec::new();
         let mut closed = HashSet::new();
