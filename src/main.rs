@@ -2,22 +2,22 @@ pub mod event_tree;
 pub mod outline;
 pub mod tunics;
 
-use crate::event_tree::Tree;
-
 fn main() {
+    use crate::event_tree::Tree;
     use crate::tunics::calc_join_weight;
     use crate::tunics::hide_chests;
     use crate::tunics::OutlineConf;
-    use rand::SeedableRng;
-    let mut rng = rand::rngs::StdRng::seed_from_u64(3);
-    //let mut rng = rand::rngs::ThreadRng::default();
+    use crate::tunics::Treasure;
+    //use rand::SeedableRng;
+    //let mut rng = rand::rngs::StdRng::seed_from_u64(3);
+    let mut rng = rand::rngs::ThreadRng::default();
 
     let outline = OutlineConf {
-        num_fairies: 0,
-        num_cul_de_sacs: 0,
-        num_small_keys: 0,
-        //treasures: [Treasure::BombsCounter].iter().cloned().collect(),
-        treasures: [].iter().cloned().collect(),
+        num_fairies: 1,
+        num_cul_de_sacs: 1,
+        num_small_keys: 2,
+        treasures: [Treasure::BombsCounter].iter().cloned().collect(),
+        //treasures: [].iter().cloned().collect(),
     }
     .into_outline();
     let actions = outline.action_sequence(&mut rng);

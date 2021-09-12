@@ -263,7 +263,7 @@ where
                 None => "",
             };
             println!(
-                "{:indent$}* {}-{}-{}-{}",
+                "{:indent$}* {}:{}:{}:{}",
                 "",
                 lock,
                 room.chest
