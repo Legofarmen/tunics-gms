@@ -27,8 +27,8 @@ function receive_packet(buffer,socket){
 				buffer_write(server_buffer,buffer_u16,sprite); //SEND SPRITEINDEX BACK TO CLIENT
 				buffer_write(server_buffer,buffer_u8,image); //SEND IMAGEINDEX BACK TO CLIENT
 				network_send_packet(_sock,server_buffer,buffer_tell(server_buffer)); //SEND PACKET WITH BUFFER
-				i++;
 				}
+				i++;
 			}
 			break;
 	}
