@@ -3,7 +3,6 @@ pub mod outline;
 pub mod tunics;
 
 use crate::event_tree::Tree;
-use crate::event_tree::Visitor;
 use crate::tunics::Event;
 use crate::tunics::Obstacle;
 use crate::tunics::Treasure;
@@ -84,42 +83,8 @@ where
     }
 }
 
-pub trait Ev: Clone {
-    type Room: Ro + Default;
-
-    fn apply(&self, room: &mut Self::Room) -> bool;
-}
-
-pub trait Ro: Sized {
-    fn add_exits<I>(self, exits: I) -> Self
-    where
-        I: IntoIterator<Item = Self>;
-}
-
-fn room_tree<E: Clone + Ev>(tree: Tree<E>) -> E::Room {
-    struct V;
-
-    impl<E: Ev> Visitor<E> for V {
-        type Room = E::Room;
-
-        fn visit_event(&mut self, event: &E, next: Tree<E>) -> Self::Room {
-            let mut room = next.accept(self);
-            if event.apply(&mut room) {
-                room
-            } else {
-                let mut room = Self::Room::default().add_exits(vec![room]);
-                event.apply(&mut room);
-                room
-            }
-        }
-
-        fn visit_branch(&mut self, nodes: Vec<Tree<E>>) -> E::Room {
-            let nodes: Vec<_> = nodes.into_iter().map(|node| node.accept(self)).collect();
-            E::Room::default().add_exits(nodes)
-        }
-    }
-    tree.accept(&mut V)
-}
+use crate::event_tree::Ev;
+use crate::event_tree::Ro;
 
 impl Ro for Room<Treasure, Obstacle, Lock> {
     fn add_exits<I>(mut self, exits: I) -> Self
@@ -232,6 +197,6 @@ fn main() {
     hide_chests(&mut rng, &mut tree);
     tree.show();
 
-    let room = room_tree(tree);
+    let room = tree.room_tree();
     room.show();
 }
