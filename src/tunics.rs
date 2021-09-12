@@ -29,11 +29,11 @@ impl OutlineConf {
         }
 
         let boss = outline.node(AddEvent(Event::Boss));
-        let big_key = outline.node(AddEvent(Event::Chest(Treasure::BigKey)));
+        let big_key = outline.node(AddEvent(Event::SmallChest(Treasure::BigKey)));
         outline.dep(big_key, boss);
 
-        let hide_chests = outline.node(HideChests);
-        let compass = outline.node(AddEvent(Event::Chest(Treasure::Compass)));
+        let hide_chests = outline.node(PrependEach(Event::HideSmallChests));
+        let compass = outline.node(AddEvent(Event::SmallChest(Treasure::Compass)));
         outline.dep(hide_chests, boss);
         outline.dep(compass, hide_chests);
         outline.dep(entrance, compass);
@@ -59,7 +59,7 @@ impl OutlineConf {
             if i == self.num_small_keys - 1 {
                 let mut last_small_key = None;
                 for j in 0..self.num_small_keys {
-                    let small_key = outline.node(AddEvent(Event::Chest(Treasure::SmallKey)));
+                    let small_key = outline.node(AddEvent(Event::SmallChest(Treasure::SmallKey)));
                     if let Some(last_small_key) = last_small_key {
                         outline.dep(small_key, last_small_key);
                     } else {
@@ -77,7 +77,7 @@ impl OutlineConf {
             outline.dep(entrance, big_key);
         }
 
-        let map = outline.node(AddEvent(Event::Chest(Treasure::Map)));
+        let map = outline.node(AddEvent(Event::SmallChest(Treasure::Map)));
         if let Some(weak_wall) = outline.index(PrependEach(Event::Obstacle(Obstacle::WeakWall))) {
             let very_weak_wall = outline
                 .index(PrependEach(Event::Obstacle(Obstacle::VeryWeakWall)))
@@ -127,9 +127,9 @@ pub enum Event {
     CulDeSac,
     Fairy,
     Obstacle(Obstacle),
-    Chest(Treasure),
+    SmallChest(Treasure),
     BigChest(Treasure),
-    HiddenChest(Treasure),
+    HideSmallChests,
     LockedDoor,
     Entrance,
 }
@@ -140,7 +140,6 @@ pub enum EventTreeAction {
     PrependAny(Event),
     PrependEach(Event),
     PrependGrouped(Event),
-    HideChests,
 }
 
 impl Action for EventTreeAction {
@@ -166,33 +165,6 @@ impl Action for EventTreeAction {
                 let new_head = Tree::Branch(group).prepended(*event);
                 heads.push(new_head)
             }
-            HideChests => {
-                fn accept(node: &mut Tree<Event>) {
-                    let treasure = match node {
-                        Tree::Event(event, next) => {
-                            accept(next);
-                            if let Event::Chest(treasure) = event {
-                                Some(*treasure)
-                            } else {
-                                None
-                            }
-                        }
-                        Tree::Branch(nodes) => {
-                            for node in nodes {
-                                accept(node);
-                            }
-                            None
-                        }
-                    };
-                    if let Some(treasure) = treasure {
-                        node.skip_event();
-                        node.prepend(Event::HiddenChest(treasure));
-                    }
-                }
-                for head in heads {
-                    accept(head);
-                }
-            }
         }
     }
 }
@@ -205,10 +177,7 @@ pub fn calc_join_weight(
     fn big_key_pred(event: &Event) -> bool {
         matches!(
             event,
-            Event::Boss
-                | Event::BigChest(_)
-                | Event::HiddenChest(Treasure::BigKey)
-                | Event::Chest(Treasure::BigKey)
+            Event::Boss | Event::BigChest(_) | Event::SmallChest(Treasure::BigKey)
         )
     }
     let depth = tree.find_event_depth(&big_key_pred);
