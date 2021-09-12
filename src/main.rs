@@ -22,16 +22,16 @@ fn main() {
     .into_outline();
     let actions = outline.action_sequence(&mut rng);
 
+    let mut tree = Tree::from_actions(&mut rng, 3, &actions, calc_join_weight);
+    hide_chests(&mut rng, &mut tree);
+
     /*
     outline.show();
     for action in &actions {
         println!("{:?}", action);
     }
-    */
-
-    let mut tree = Tree::from_actions(&mut rng, 3, &actions, calc_join_weight);
-    hide_chests(&mut rng, &mut tree);
     tree.show();
+    */
 
     let room = tree.room_tree();
     room.show();

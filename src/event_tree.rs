@@ -107,12 +107,12 @@ where
 
 impl<E> Tree<E>
 where
-    E: Clone + Ev,
+    E: Clone + Event,
 {
     pub fn room_tree(self) -> E::Room {
         struct V;
 
-        impl<E: Ev> Visitor<E> for V {
+        impl<E: Event> Visitor<E> for V {
             type Room = E::Room;
 
             fn visit_event(&mut self, event: &E, next: Tree<E>) -> Self::Room {
@@ -245,13 +245,13 @@ where
     }
 }
 
-pub trait Ev: Clone {
-    type Room: Ro + Default;
+pub trait Event: Clone {
+    type Room: Room + Default;
 
     fn apply(&self, room: &mut Self::Room) -> bool;
 }
 
-pub trait Ro: Sized {
+pub trait Room: Sized {
     fn add_exits<I>(self, exits: I) -> Self
     where
         I: IntoIterator<Item = Self>;

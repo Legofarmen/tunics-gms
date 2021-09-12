@@ -1,6 +1,6 @@
+use crate::event_tree;
 use crate::event_tree::Action;
-use crate::event_tree::Ev;
-use crate::event_tree::Ro;
+use crate::event_tree::Room as _;
 use crate::event_tree::Tree;
 use crate::outline::Outline;
 use rand::Rng;
@@ -285,7 +285,7 @@ where
     }
 }
 
-impl Ro for Room<Treasure, Obstacle, Lock> {
+impl event_tree::Room for Room<Treasure, Obstacle, Lock> {
     fn add_exits<I>(mut self, exits: I) -> Self
     where
         I: IntoIterator<Item = Self>,
@@ -295,7 +295,7 @@ impl Ro for Room<Treasure, Obstacle, Lock> {
     }
 }
 
-impl Ev for Event {
+impl event_tree::Event for Event {
     type Room = Room<Treasure, Obstacle, Lock>;
 
     fn apply(&self, room: &mut Room<Treasure, Obstacle, Lock>) -> bool {
