@@ -15,8 +15,12 @@ fn main() {
     use crate::tunics::hide_chests;
     use crate::tunics::OutlineConf;
     use crate::tunics::Treasure;
-    //let mut rng = rand::rngs::StdRng::seed_from_u64(3);
-    let mut rng = rand::rngs::ThreadRng::default();
+    use rand::rngs::StdRng;
+    use rand::rngs::ThreadRng;
+
+    let seed = ThreadRng::default().gen();
+    println!("{}", seed);
+    let mut rng = StdRng::seed_from_u64(seed);
 
     let outline = OutlineConf {
         num_fairies: 1,

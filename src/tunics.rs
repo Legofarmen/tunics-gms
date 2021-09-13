@@ -1,6 +1,5 @@
 use crate::event_tree;
 use crate::event_tree::Action;
-use crate::event_tree::Room as _;
 use crate::event_tree::Tree;
 use crate::outline::Outline;
 use rand::Rng;
