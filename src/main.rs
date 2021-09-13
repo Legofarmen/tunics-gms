@@ -2,13 +2,19 @@ pub mod event_tree;
 pub mod outline;
 pub mod tunics;
 
+use rand::Rng;
+use rand::SeedableRng;
+
+fn split_rng<R: Rng>(rng: &mut R) -> impl Rng {
+    rand::rngs::StdRng::seed_from_u64(rng.gen())
+}
+
 fn main() {
     use crate::event_tree::Tree;
     use crate::tunics::calc_join_weight;
     use crate::tunics::hide_chests;
     use crate::tunics::OutlineConf;
     use crate::tunics::Treasure;
-    //use rand::SeedableRng;
     //let mut rng = rand::rngs::StdRng::seed_from_u64(3);
     let mut rng = rand::rngs::ThreadRng::default();
 
@@ -20,9 +26,10 @@ fn main() {
         //treasures: [].iter().cloned().collect(),
     }
     .into_outline();
-    let actions = outline.action_sequence(&mut rng);
+    let mut rng2 = split_rng(&mut rng);
+    let actions = outline.action_iter(&mut rng2);
 
-    let mut tree = Tree::from_actions(&mut rng, 3, &actions, calc_join_weight);
+    let mut tree = Tree::from_actions(&mut rng, actions, 3, calc_join_weight);
     hide_chests(&mut rng, &mut tree);
 
     /*

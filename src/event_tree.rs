@@ -168,9 +168,10 @@ impl<E> Tree<E>
 where
     E: Copy + Debug + Eq + Hash,
 {
-    pub fn from_actions<R, W>(rng: &mut R, max_heads: usize, actions: &[Action<E>], w: W) -> Tree<E>
+    pub fn from_actions<R, I, W>(rng: &mut R, actions: I, max_heads: usize, w: W) -> Tree<E>
     where
         R: Rng,
+        I: IntoIterator<Item = Action<E>>,
         W: Fn(&Tree<E>, usize) -> Box<dyn Fn(&Tree<E>) -> usize>,
     {
         use rand::distributions::weighted::WeightedIndex;
