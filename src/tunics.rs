@@ -113,6 +113,7 @@ pub enum Obstacle {
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Treasure {
+    NoChest,
     BigKey,
     BombsCounter,
     Map,
@@ -123,6 +124,7 @@ pub enum Treasure {
 impl Treasure {
     fn get_obstacles(self) -> &'static [Obstacle] {
         match self {
+            Treasure::NoChest => &[],
             Treasure::BigKey => &[],
             Treasure::BombsCounter => &[Obstacle::WeakWall, Obstacle::VeryWeakWall],
             Treasure::Map => &[],
@@ -351,15 +353,15 @@ impl event_tree::Event for Event {
             Event::CulDeSac
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
-                *room = Room::default().add_exits(vec![room.clone()]);
                 room.obstacle = Some(Obstacle::CulDeSac);
+                room.chest = Some(Treasure::NoChest);
                 true
             }
             Event::Fairy
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
-                *room = Room::default().add_exits(vec![room.clone()]);
                 room.obstacle = Some(Obstacle::Fairy);
+                room.chest = Some(Treasure::NoChest);
                 true
             }
             _ => false,
