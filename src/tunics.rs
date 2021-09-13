@@ -8,24 +8,24 @@ use std::collections::HashSet;
 const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
 
-pub struct OutlineConf {
+pub struct Config {
     pub num_small_keys: usize,
     pub num_fairies: usize,
     pub num_cul_de_sacs: usize,
     pub treasures: HashSet<Treasure>,
 }
 
-impl OutlineConf {
-    pub fn into_outline(self) -> Outline<Event> {
+impl From<Config> for Outline<Event> {
+    fn from(config: Config) -> Outline<Event> {
         let mut outline = Outline::new();
         let entrance = outline.node(Action::PrependGrouped(Event::Entrance));
 
-        for _ in 0..self.num_cul_de_sacs {
+        for _ in 0..config.num_cul_de_sacs {
             let cul_de_sac = outline.node(Action::AddEvent(Event::CulDeSac));
             outline.dep(entrance, cul_de_sac);
         }
 
-        for _ in 0..self.num_fairies {
+        for _ in 0..config.num_fairies {
             let fairy = outline.node(Action::AddEvent(Event::Fairy));
             outline.dep(entrance, fairy);
         }
@@ -40,7 +40,7 @@ impl OutlineConf {
         outline.dep(compass, hide_chests);
         outline.dep(entrance, compass);
 
-        for treasure in &self.treasures {
+        for treasure in &config.treasures {
             let big_chest = outline.node(Action::AddEvent(Event::BigChest(*treasure)));
             outline.dep(big_key, big_chest);
             for obstacle in treasure.get_obstacles() {
@@ -51,16 +51,16 @@ impl OutlineConf {
         }
 
         let mut last_locked_door = None;
-        for i in 0..self.num_small_keys {
+        for i in 0..config.num_small_keys {
             let locked_door = outline.node(Action::PrependAny(Event::SmallKeyDoor));
             if let Some(last_locked_door) = last_locked_door {
                 outline.dep(locked_door, last_locked_door);
             } else {
                 outline.dep(locked_door, big_key);
             }
-            if i == self.num_small_keys - 1 {
+            if i == config.num_small_keys - 1 {
                 let mut last_small_key = None;
-                for j in 0..self.num_small_keys {
+                for j in 0..config.num_small_keys {
                     let small_key =
                         outline.node(Action::AddEvent(Event::SmallChest(Treasure::SmallKey)));
                     if let Some(last_small_key) = last_small_key {
@@ -68,7 +68,7 @@ impl OutlineConf {
                     } else {
                         outline.dep(small_key, locked_door);
                     }
-                    if j == self.num_small_keys - 1 {
+                    if j == config.num_small_keys - 1 {
                         outline.dep(entrance, small_key);
                     }
                     last_small_key = Some(small_key);
@@ -76,7 +76,7 @@ impl OutlineConf {
             }
             last_locked_door = Some(locked_door);
         }
-        if self.num_small_keys == 0 {
+        if config.num_small_keys == 0 {
             outline.dep(entrance, big_key);
         }
 
@@ -270,12 +270,12 @@ where
                 room.chest
                     .as_ref()
                     .map(|v| format!("{:?}", v))
-                    .unwrap_or("".to_string()),
+                    .unwrap_or_else(|| "".to_string()),
                 side,
                 room.obstacle
                     .as_ref()
                     .map(|v| format!("{:?}", v))
-                    .unwrap_or("".to_string()),
+                    .unwrap_or_else(|| "".to_string()),
                 indent = indent
             );
             for exit in &room.exits {

@@ -11,9 +11,10 @@ fn split_rng<R: Rng>(rng: &mut R) -> impl Rng {
 
 fn main() {
     use crate::event_tree::Tree;
+    use crate::outline::Outline;
     use crate::tunics::calc_join_weight;
     use crate::tunics::hide_chests;
-    use crate::tunics::OutlineConf;
+    use crate::tunics::Config;
     use crate::tunics::Treasure;
     use rand::rngs::StdRng;
     use rand::rngs::ThreadRng;
@@ -21,20 +22,22 @@ fn main() {
     let seed = ThreadRng::default().gen();
     println!("{}", seed);
     let mut rng = StdRng::seed_from_u64(seed);
+    let mut rng2 = split_rng(&mut rng);
 
-    let outline = OutlineConf {
+    let outline = Outline::from(Config {
         num_fairies: 1,
         num_cul_de_sacs: 1,
         num_small_keys: 2,
         treasures: [Treasure::BombsCounter].iter().cloned().collect(),
         //treasures: [].iter().cloned().collect(),
-    }
-    .into_outline();
-    let mut rng2 = split_rng(&mut rng);
-    let actions = outline.action_iter(&mut rng2);
+    });
 
+    let actions = outline.action_iter(&mut rng2);
     let mut tree = Tree::from_actions(&mut rng, actions, 3, calc_join_weight);
+
     hide_chests(&mut rng, &mut tree);
+
+    let room = tree.into_room();
 
     /*
     outline.show();
@@ -44,6 +47,5 @@ fn main() {
     tree.show();
     */
 
-    let room = tree.room_tree();
     room.show();
 }

@@ -4,19 +4,17 @@ use std::hash::Hash;
 
 pub trait Visitor<E>
 where
-    E: Clone,
+    E: Event,
 {
-    type Room;
+    fn visit_event(&mut self, event: &E, next: Tree<E>) -> E::Room;
 
-    fn visit_event(&mut self, event: &E, next: Tree<E>) -> Self::Room;
-
-    fn visit_branch(&mut self, nodes: Vec<Tree<E>>) -> Self::Room;
+    fn visit_branch(&mut self, nodes: Vec<Tree<E>>) -> E::Room;
 }
 
 #[derive(Clone)]
 pub enum Tree<E>
 where
-    E: Clone,
+    E: Event,
 {
     Event(E, Box<Tree<E>>),
     Branch(Vec<Tree<E>>),
@@ -24,7 +22,7 @@ where
 
 impl<E> Tree<E>
 where
-    E: Clone,
+    E: Event,
 {
     pub fn new() -> Self {
         Tree::Branch(Vec::new())
@@ -94,7 +92,7 @@ where
         }
     }
 
-    pub fn accept<V>(self, visitor: &mut V) -> V::Room
+    pub fn accept<V>(self, visitor: &mut V) -> E::Room
     where
         V: Visitor<E>,
     {
@@ -103,24 +101,17 @@ where
             Tree::Branch(nodes) => visitor.visit_branch(nodes),
         }
     }
-}
 
-impl<E> Tree<E>
-where
-    E: Clone + Event,
-{
-    pub fn room_tree(self) -> E::Room {
+    pub fn into_room(self) -> E::Room {
         struct V;
 
         impl<E: Event> Visitor<E> for V {
-            type Room = E::Room;
-
-            fn visit_event(&mut self, event: &E, next: Tree<E>) -> Self::Room {
+            fn visit_event(&mut self, event: &E, next: Tree<E>) -> E::Room {
                 let mut room = next.accept(self);
                 if event.apply(&mut room) {
                     room
                 } else {
-                    let mut room = Self::Room::default().add_exits(vec![room]);
+                    let mut room = E::Room::default().add_exits(vec![room]);
                     event.apply(&mut room);
                     room
                 }
@@ -137,12 +128,12 @@ where
 
 impl<E> Tree<E>
 where
-    E: Clone + Debug,
+    E: Event + Debug,
 {
     pub fn show(&self) {
         fn visit<E>(node: &Tree<E>, mark: bool, indent: usize)
         where
-            E: Clone + Debug,
+            E: Event + Debug,
         {
             let prefix = if mark { "+ " } else { "  " };
             match node {
@@ -166,7 +157,7 @@ where
 
 impl<E> Tree<E>
 where
-    E: Copy + Debug + Eq + Hash,
+    E: Debug + Event + Eq + Hash,
 {
     pub fn from_actions<R, I, W>(rng: &mut R, actions: I, max_heads: usize, w: W) -> Tree<E>
     where
@@ -200,7 +191,7 @@ where
 
 impl<E> Default for Tree<E>
 where
-    E: Copy + Debug,
+    E: Event + Debug,
 {
     fn default() -> Self {
         Tree::new()
@@ -220,7 +211,7 @@ where
 
 impl<E> Action<E>
 where
-    E: Copy + Debug + Eq + Hash,
+    E: Debug + Eq + Event + Hash,
 {
     fn apply<R: Rng>(&self, rng: &mut R, heads: &mut Vec<Tree<E>>) {
         use rand::prelude::SliceRandom;
@@ -246,7 +237,7 @@ where
     }
 }
 
-pub trait Event: Clone {
+pub trait Event: Copy {
     type Room: Room + Default;
 
     fn apply(&self, room: &mut Self::Room) -> bool;

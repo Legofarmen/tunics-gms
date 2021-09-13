@@ -17,7 +17,7 @@ pub struct Index(usize);
 
 pub struct Outline<E>
 where
-    E: std::fmt::Debug,
+    E: Debug,
 {
     nodes: Vec<Action<E>>,
     deps: HashMap<Index, HashSet<Index>>,
@@ -26,7 +26,7 @@ where
 
 impl<E> Outline<E>
 where
-    E: std::fmt::Debug,
+    E: Debug,
 {
     pub fn new() -> Self {
         Outline {
@@ -121,21 +121,21 @@ where
     }
 }
 
-impl<E> Default for Outline<E>
-where
-    E: std::fmt::Debug,
-{
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl<E> Outline<E>
 where
-    E: Clone + std::fmt::Debug,
+    E: Clone + Debug,
 {
     pub fn get(&self, index: &Index) -> Option<Action<E>> {
         self.nodes.get(index.0).cloned()
+    }
+}
+
+impl<E> Default for Outline<E>
+where
+    E: Debug,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -157,6 +157,7 @@ where
     R: Rng,
 {
     type Item = Action<E>;
+
     fn next(&mut self) -> Option<Action<E>> {
         if self.open.is_empty() {
             return None;
@@ -204,7 +205,7 @@ where
         }
         ActionIter {
             rng,
-            outline: &self,
+            outline: self,
             weights: self.reachable_counts(),
             open,
             closed: HashSet::new(),
@@ -216,7 +217,7 @@ where
     }
 }
 
-impl<A: std::fmt::Debug> Outline<A> {
+impl<A: Debug> Outline<A> {
     pub fn show(&self) {
         for index in self.sorted() {
             let mut deps: Vec<_> = self
