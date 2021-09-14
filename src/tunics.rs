@@ -1,7 +1,10 @@
 use crate::event_tree;
 use crate::event_tree::Action;
+use crate::event_tree::Compacter;
 use crate::event_tree::Tree;
 use crate::outline::Outline;
+use rand::distributions::weighted::WeightedIndex;
+use rand::distributions::Distribution;
 use rand::Rng;
 use std::collections::HashSet;
 
@@ -147,8 +150,6 @@ pub enum Event {
     Entrance,
 }
 
-impl Event {}
-
 pub fn calc_join_weight(
     tree: &Tree<Event>,
     global_max_depth: usize,
@@ -180,6 +181,27 @@ pub fn calc_join_weight(
                 + BIG_KEY_DEPTH_WEIGHT * (global_max_depth - big_key_depth)
                 + 1
         })
+    }
+}
+
+pub struct MyCompacter {
+    pub max_heads: usize,
+}
+
+impl Compacter<Event> for MyCompacter {
+    fn compact<R>(&self, rng: &mut R, heads: &mut Vec<Tree<Event>>)
+    where
+        R: Rng,
+    {
+        while heads.len() > self.max_heads {
+            let head = heads.remove(rng.gen_range(0..heads.len()));
+            let max_depth = heads.iter().fold(0, |acc: usize, node: &Tree<Event>| {
+                acc.max(node.max_depth())
+            });
+            let calc_join_weight = calc_join_weight(&head, max_depth);
+            let dist = WeightedIndex::new(heads.iter().map(calc_join_weight)).unwrap();
+            heads.get_mut(dist.sample(rng)).unwrap().join(head);
+        }
     }
 }
 

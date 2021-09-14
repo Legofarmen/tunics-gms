@@ -155,31 +155,29 @@ where
     }
 }
 
+pub trait Compacter<E>
+where
+    E: Event,
+{
+    fn compact<R>(&self, rng: &mut R, heads: &mut Vec<Tree<E>>)
+    where
+        R: Rng;
+}
+
 impl<E> Tree<E>
 where
     E: Debug + Event + Eq + Hash,
 {
-    pub fn from_actions<R, I, W>(rng: &mut R, actions: I, max_heads: usize, w: W) -> Tree<E>
+    pub fn from_actions<R, I, C>(rng: &mut R, actions: I, compacter: &C) -> Tree<E>
     where
         R: Rng,
         I: IntoIterator<Item = Action<E>>,
-        W: Fn(&Tree<E>, usize) -> Box<dyn Fn(&Tree<E>) -> usize>,
+        C: Compacter<E>,
     {
-        use rand::distributions::weighted::WeightedIndex;
-        use rand::distributions::Distribution;
-
         let mut heads = Vec::new();
         for action in actions {
-            while heads.len() > max_heads {
-                let head = heads.remove(rng.gen_range(0..heads.len()));
-                let max_depth = heads
-                    .iter()
-                    .fold(0, |acc: usize, node: &Tree<E>| acc.max(node.max_depth()));
-                let calc_join_weight = w(&head, max_depth);
-                let dist = WeightedIndex::new(heads.iter().map(calc_join_weight)).unwrap();
-                heads.get_mut(dist.sample(rng)).unwrap().join(head);
-            }
             action.apply(rng, &mut heads);
+            compacter.compact(rng, &mut heads);
         }
         if heads.len() == 1 {
             heads.pop().unwrap()
