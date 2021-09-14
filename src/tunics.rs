@@ -18,8 +18,8 @@ pub struct Config {
     pub treasures: HashSet<Treasure>,
 }
 
-impl From<Config> for Outline<Event> {
-    fn from(config: Config) -> Outline<Event> {
+impl From<Config> for Outline<Event, HideSmallChests> {
+    fn from(config: Config) -> Outline<Event, HideSmallChests> {
         let mut outline = Outline::new();
         let entrance = outline.node(Action::PrependGrouped(Event::Entrance));
 
@@ -37,7 +37,7 @@ impl From<Config> for Outline<Event> {
         let big_key = outline.node(Action::AddEvent(Event::SmallChest(Treasure::BigKey)));
         outline.dep(big_key, boss);
 
-        let hide_chests = outline.node(Action::PrependEach(Event::HideSmallChests));
+        let hide_chests = outline.node(Action::Transform(HideSmallChests));
         let compass = outline.node(Action::AddEvent(Event::SmallChest(Treasure::Compass)));
         outline.dep(hide_chests, boss);
         outline.dep(compass, hide_chests);
@@ -145,9 +145,38 @@ pub enum Event {
     SmallChest(Treasure),
     HiddenSmallChest(Treasure),
     BigChest(Treasure),
-    HideSmallChests,
     SmallKeyDoor,
     Entrance,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub struct HideSmallChests;
+
+impl crate::event_tree::Transform<Event> for HideSmallChests {
+    fn apply<R: Rng>(&self, rng: &mut R, tree: &mut Tree<Event>) {
+        fn visit<R: Rng>(rng: &mut R, tree: &mut Tree<Event>, is_below: bool) {
+            match tree {
+                Tree::Event(event @ Event::SmallChest(_), next) if is_below => {
+                    let treasure = if let Event::SmallChest(treasure) = event {
+                        *treasure
+                    } else {
+                        unreachable!()
+                    };
+                    if rng.gen_bool(0.5) {
+                        *event = Event::HiddenSmallChest(treasure);
+                    }
+                    visit(rng, next, true);
+                }
+                Tree::Event(_, next) => visit(rng, next, is_below),
+                Tree::Branch(nodes) => {
+                    for node in nodes {
+                        visit(rng, node, is_below);
+                    }
+                }
+            }
+        }
+        visit(rng, tree, false);
+    }
 }
 
 pub fn calc_join_weight(
@@ -203,35 +232,6 @@ impl Compacter<Event> for MyCompacter {
             heads.get_mut(dist.sample(rng)).unwrap().join(head);
         }
     }
-}
-
-pub fn hide_chests<R: Rng>(rng: &mut R, tree: &mut Tree<Event>) {
-    fn visit<R: Rng>(rng: &mut R, tree: &mut Tree<Event>, is_below: bool) {
-        match tree {
-            Tree::Event(Event::HideSmallChests, next) => {
-                visit(rng, next, true);
-                *tree = (**next).clone();
-            }
-            Tree::Event(event @ Event::SmallChest(_), next) if is_below => {
-                let treasure = if let Event::SmallChest(treasure) = event {
-                    *treasure
-                } else {
-                    unreachable!()
-                };
-                if rng.gen_bool(0.5) {
-                    *event = Event::HiddenSmallChest(treasure);
-                }
-                visit(rng, next, true);
-            }
-            Tree::Event(_, next) => visit(rng, next, is_below),
-            Tree::Branch(nodes) => {
-                for node in nodes {
-                    visit(rng, node, is_below);
-                }
-            }
-        }
-    }
-    visit(rng, tree, false)
 }
 
 #[derive(Clone, Debug)]
@@ -357,9 +357,6 @@ impl event_tree::Event for Event {
                 room.chest = Some(*treasure);
                 room.obstacle = Some(Obstacle::BigChest);
                 true
-            }
-            Event::HideSmallChests => {
-                unimplemented!("should removed prior to this");
             }
             Event::SmallKeyDoor if room.entrance.is_none() => {
                 room.entrance = Some(Lock::SmallKey);

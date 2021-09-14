@@ -168,11 +168,12 @@ impl<E> Tree<E>
 where
     E: Debug + Event + Eq + Hash,
 {
-    pub fn from_actions<R, I, C>(rng: &mut R, actions: I, compacter: &C) -> Tree<E>
+    pub fn from_actions<R, I, C, T>(rng: &mut R, actions: I, compacter: &C) -> Tree<E>
     where
         R: Rng,
-        I: IntoIterator<Item = Action<E>>,
+        I: IntoIterator<Item = Action<E, T>>,
         C: Compacter<E>,
+        T: Transform<E>,
     {
         let mut heads = Vec::new();
         for action in actions {
@@ -197,19 +198,22 @@ where
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Action<E>
+pub enum Action<E, T>
 where
     E: Debug,
+    T: Copy,
 {
     AddEvent(E),
     PrependAny(E),
     PrependEach(E),
     PrependGrouped(E),
+    Transform(T),
 }
 
-impl<E> Action<E>
+impl<E, T> Action<E, T>
 where
     E: Debug + Eq + Event + Hash,
+    T: Transform<E>,
 {
     fn apply<R: Rng>(&self, rng: &mut R, heads: &mut Vec<Tree<E>>) {
         use rand::prelude::SliceRandom;
@@ -231,6 +235,11 @@ where
                 let new_head = Tree::Branch(group).prepended(*event);
                 heads.push(new_head)
             }
+            Action::Transform(transform) => {
+                for node in heads {
+                    transform.apply(rng, node);
+                }
+            }
         }
     }
 }
@@ -239,6 +248,13 @@ pub trait Event: Copy {
     type Room: Room + Default;
 
     fn apply(&self, room: &mut Self::Room) -> bool;
+}
+
+pub trait Transform<E>: Copy
+where
+    E: Event,
+{
+    fn apply<R: Rng>(&self, rng: &mut R, tree: &mut Tree<E>);
 }
 
 pub trait Room: Sized {

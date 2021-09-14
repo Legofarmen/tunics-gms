@@ -15,18 +15,20 @@ lazy_static! {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Index(usize);
 
-pub struct Outline<E>
+pub struct Outline<E, T>
 where
     E: Debug,
+    T: Copy,
 {
-    nodes: Vec<Action<E>>,
+    nodes: Vec<Action<E, T>>,
     deps: HashMap<Index, HashSet<Index>>,
     rev_deps: HashMap<Index, HashSet<Index>>,
 }
 
-impl<E> Outline<E>
+impl<E, T> Outline<E, T>
 where
     E: Debug,
+    T: Copy,
 {
     pub fn new() -> Self {
         Outline {
@@ -35,7 +37,7 @@ where
             rev_deps: HashMap::new(),
         }
     }
-    pub fn node(&mut self, action: Action<E>) -> Index {
+    pub fn node(&mut self, action: Action<E, T>) -> Index {
         let i = self.nodes.len();
         self.nodes.push(action);
         Index(i)
@@ -94,7 +96,7 @@ where
     pub fn indices(&self) -> impl Iterator<Item = Index> {
         (0..self.nodes.len()).map(Index)
     }
-    pub fn nodes(&self) -> &[Action<E>] {
+    pub fn nodes(&self) -> &[Action<E, T>] {
         self.nodes.as_slice()
     }
     pub fn deps(&self, source: Index) -> &HashSet<Index> {
@@ -121,44 +123,48 @@ where
     }
 }
 
-impl<E> Outline<E>
+impl<E, T> Outline<E, T>
 where
     E: Clone + Debug,
+    T: Copy,
 {
-    pub fn get(&self, index: &Index) -> Option<Action<E>> {
+    pub fn get(&self, index: &Index) -> Option<Action<E, T>> {
         self.nodes.get(index.0).cloned()
     }
 }
 
-impl<E> Default for Outline<E>
+impl<E, T> Default for Outline<E, T>
 where
     E: Debug,
+    T: Copy,
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-pub struct ActionIter<'a, E, R>
+pub struct ActionIter<'a, E, T, R>
 where
     E: Debug,
     R: Rng,
+    T: Copy,
 {
     rng: &'a mut R,
-    outline: &'a Outline<E>,
+    outline: &'a Outline<E, T>,
     weights: HashMap<Index, usize>,
     open: Vec<Index>,
     closed: HashSet<Index>,
 }
 
-impl<'a, E, R> Iterator for ActionIter<'a, E, R>
+impl<'a, E, T, R> Iterator for ActionIter<'a, E, T, R>
 where
     E: Clone + Debug,
     R: Rng,
+    T: Copy,
 {
-    type Item = Action<E>;
+    type Item = Action<E, T>;
 
-    fn next(&mut self) -> Option<Action<E>> {
+    fn next(&mut self) -> Option<Action<E, T>> {
         if self.open.is_empty() {
             return None;
         }
@@ -189,11 +195,12 @@ where
     }
 }
 
-impl<E> Outline<E>
+impl<E, T> Outline<E, T>
 where
-    E: Clone + Debug + Eq,
+    E: Debug + Eq,
+    T: Copy + Eq,
 {
-    pub fn action_iter<'a, R>(&'a self, rng: &'a mut R) -> ActionIter<'a, E, R>
+    pub fn action_iter<'a, R>(&'a self, rng: &'a mut R) -> ActionIter<'a, E, T, R>
     where
         R: Rng,
     {
@@ -212,12 +219,12 @@ where
         }
     }
 
-    pub fn index(&self, action: Action<E>) -> Option<Index> {
+    pub fn index(&self, action: Action<E, T>) -> Option<Index> {
         self.nodes.iter().position(|a| *a == action).map(Index)
     }
 }
 
-impl<A: Debug> Outline<A> {
+impl<A: Debug, T: Copy + Debug> Outline<A, T> {
     pub fn show(&self) {
         for index in self.sorted() {
             let mut deps: Vec<_> = self
