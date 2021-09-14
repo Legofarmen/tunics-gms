@@ -1,6 +1,6 @@
 use crate::event_tree;
 use crate::event_tree::Action;
-use crate::event_tree::Compacter;
+use crate::event_tree::Transform;
 use crate::event_tree::Tree;
 use crate::outline::Outline;
 use rand::distributions::weighted::WeightedIndex;
@@ -152,7 +152,7 @@ pub enum Event {
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub struct HideSmallChests;
 
-impl crate::event_tree::Transform<Event> for HideSmallChests {
+impl Transform<Event> for HideSmallChests {
     fn apply<R: Rng>(&self, rng: &mut R, tree: &mut Tree<Event>) {
         fn visit<R: Rng>(rng: &mut R, tree: &mut Tree<Event>, is_below: bool) {
             match tree {
@@ -213,11 +213,11 @@ pub fn calc_join_weight(
     }
 }
 
-pub struct MyCompacter {
+pub struct Compacter {
     pub max_heads: usize,
 }
 
-impl Compacter<Event> for MyCompacter {
+impl event_tree::Compacter<Event> for Compacter {
     fn compact<R>(&self, rng: &mut R, heads: &mut Vec<Tree<Event>>)
     where
         R: Rng,
