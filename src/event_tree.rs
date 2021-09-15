@@ -194,12 +194,12 @@ where
                 _ => tree.prepended(*feature),
             },
             Action::PrependEach(feature) => match tree {
-                Tree::Branch(mut nodes) => {
-                    for ref mut node in &mut nodes {
-                        node.prepend(*feature);
-                    }
-                    Tree::Branch(nodes)
-                }
+                Tree::Branch(nodes) => Tree::Branch(
+                    nodes
+                        .into_iter()
+                        .map(|node| node.prepended(*feature))
+                        .collect(),
+                ),
                 _ => tree.prepended(*feature),
             },
             Action::PrependGrouped(feature) => tree.prepended(*feature),
