@@ -1,5 +1,5 @@
 pub mod feature_tree;
-pub mod outline;
+pub mod requirements;
 pub mod tunics;
 
 use rand::Rng;
@@ -11,7 +11,7 @@ fn split_rng<R: Rng>(rng: &mut R) -> impl Rng {
 
 fn main() {
     use crate::feature_tree::FeatureTree;
-    use crate::outline::Outline;
+    use crate::requirements::Requirements;
     use crate::tunics::compact;
     use crate::tunics::Config;
     use crate::tunics::Treasure;
@@ -23,14 +23,14 @@ fn main() {
     let mut rng = StdRng::seed_from_u64(seed);
     let mut rng2 = split_rng(&mut rng);
 
-    let outline = Outline::from(Config {
+    let requirements = Requirements::from(Config {
         num_fairies: 1,
         num_cul_de_sacs: 1,
         num_small_keys: 2,
         treasures: [Treasure::BombsCounter].iter().cloned().collect(),
         //treasures: [].iter().cloned().collect(),
     });
-    let tree = outline
+    let tree = requirements
         .action_iter(&mut rng2)
         .fold(FeatureTree::default(), |tree, action| {
             let tree = action.apply(&mut rng, tree);
@@ -39,7 +39,7 @@ fn main() {
     let room = tree.into_room();
 
     /*
-    outline.show();
+    requirements.show();
     for action in &actions {
         println!("{:?}", action);
     }

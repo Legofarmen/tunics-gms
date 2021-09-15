@@ -1,13 +1,14 @@
 use crate::feature_tree;
 use crate::feature_tree::Action;
 use crate::feature_tree::Transform;
-use crate::outline::Outline;
+use crate::requirements;
 use rand::distributions::weighted::WeightedIndex;
 use rand::distributions::Distribution;
 use rand::Rng;
 use std::collections::HashSet;
 
 type FeatureTree = feature_tree::FeatureTree<Feature>;
+type Requirements = requirements::Requirements<Feature, HideSmallChests>;
 
 const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
@@ -19,61 +20,61 @@ pub struct Config {
     pub treasures: HashSet<Treasure>,
 }
 
-impl From<Config> for Outline<Feature, HideSmallChests> {
-    fn from(config: Config) -> Outline<Feature, HideSmallChests> {
-        let mut outline = Outline::new();
-        let entrance = outline.node(Action::PrependGrouped(Feature::Entrance));
+impl From<Config> for Requirements {
+    fn from(config: Config) -> Requirements {
+        let mut requirements = Requirements::new();
+        let entrance = requirements.node(Action::PrependGrouped(Feature::Entrance));
 
         for _ in 0..config.num_cul_de_sacs {
-            let cul_de_sac = outline.node(Action::New(Feature::CulDeSac));
-            outline.dep(entrance, cul_de_sac);
+            let cul_de_sac = requirements.node(Action::New(Feature::CulDeSac));
+            requirements.dep(entrance, cul_de_sac);
         }
 
         for _ in 0..config.num_fairies {
-            let fairy = outline.node(Action::New(Feature::Fairy));
-            outline.dep(entrance, fairy);
+            let fairy = requirements.node(Action::New(Feature::Fairy));
+            requirements.dep(entrance, fairy);
         }
 
-        let boss = outline.node(Action::New(Feature::Boss));
-        let big_key = outline.node(Action::New(Feature::SmallChest(Treasure::BigKey)));
-        outline.dep(big_key, boss);
+        let boss = requirements.node(Action::New(Feature::Boss));
+        let big_key = requirements.node(Action::New(Feature::SmallChest(Treasure::BigKey)));
+        requirements.dep(big_key, boss);
 
-        let hide_chests = outline.node(Action::TransformEach(HideSmallChests));
-        let compass = outline.node(Action::New(Feature::SmallChest(Treasure::Compass)));
-        outline.dep(hide_chests, boss);
-        outline.dep(compass, hide_chests);
-        outline.dep(entrance, compass);
+        let hide_chests = requirements.node(Action::TransformEach(HideSmallChests));
+        let compass = requirements.node(Action::New(Feature::SmallChest(Treasure::Compass)));
+        requirements.dep(hide_chests, boss);
+        requirements.dep(compass, hide_chests);
+        requirements.dep(entrance, compass);
 
         for treasure in &config.treasures {
-            let big_chest = outline.node(Action::New(Feature::BigChest(*treasure)));
-            outline.dep(big_key, big_chest);
+            let big_chest = requirements.node(Action::New(Feature::BigChest(*treasure)));
+            requirements.dep(big_key, big_chest);
             for obstacle in treasure.get_obstacles() {
-                let obstacle = outline.node(Action::PrependEach(Feature::Obstacle(*obstacle)));
-                outline.dep(big_chest, obstacle);
-                outline.dep(obstacle, boss);
+                let obstacle = requirements.node(Action::PrependEach(Feature::Obstacle(*obstacle)));
+                requirements.dep(big_chest, obstacle);
+                requirements.dep(obstacle, boss);
             }
         }
 
         let mut last_locked_door = None;
         for i in 0..config.num_small_keys {
-            let locked_door = outline.node(Action::PrependAny(Feature::SmallKeyDoor));
+            let locked_door = requirements.node(Action::PrependAny(Feature::SmallKeyDoor));
             if let Some(last_locked_door) = last_locked_door {
-                outline.dep(locked_door, last_locked_door);
+                requirements.dep(locked_door, last_locked_door);
             } else {
-                outline.dep(locked_door, big_key);
+                requirements.dep(locked_door, big_key);
             }
             if i == config.num_small_keys - 1 {
                 let mut last_small_key = None;
                 for j in 0..config.num_small_keys {
                     let small_key =
-                        outline.node(Action::New(Feature::SmallChest(Treasure::SmallKey)));
+                        requirements.node(Action::New(Feature::SmallChest(Treasure::SmallKey)));
                     if let Some(last_small_key) = last_small_key {
-                        outline.dep(small_key, last_small_key);
+                        requirements.dep(small_key, last_small_key);
                     } else {
-                        outline.dep(small_key, locked_door);
+                        requirements.dep(small_key, locked_door);
                     }
                     if j == config.num_small_keys - 1 {
-                        outline.dep(entrance, small_key);
+                        requirements.dep(entrance, small_key);
                     }
                     last_small_key = Some(small_key);
                 }
@@ -81,26 +82,26 @@ impl From<Config> for Outline<Feature, HideSmallChests> {
             last_locked_door = Some(locked_door);
         }
         if config.num_small_keys == 0 {
-            outline.dep(entrance, big_key);
+            requirements.dep(entrance, big_key);
         }
 
-        let map = outline.node(Action::New(Feature::SmallChest(Treasure::Map)));
+        let map = requirements.node(Action::New(Feature::SmallChest(Treasure::Map)));
         if let Some(weak_wall) =
-            outline.index(Action::PrependEach(Feature::Obstacle(Obstacle::WeakWall)))
+            requirements.index(Action::PrependEach(Feature::Obstacle(Obstacle::WeakWall)))
         {
-            let very_weak_wall = outline
+            let very_weak_wall = requirements
                 .index(Action::PrependEach(Feature::Obstacle(
                     Obstacle::VeryWeakWall,
                 )))
                 .unwrap();
-            outline.dep(very_weak_wall, weak_wall);
-            outline.dep(map, very_weak_wall);
+            requirements.dep(very_weak_wall, weak_wall);
+            requirements.dep(map, very_weak_wall);
         } else {
-            outline.dep(map, boss);
+            requirements.dep(map, boss);
         }
-        outline.dep(entrance, map);
+        requirements.dep(entrance, map);
 
-        outline
+        requirements
     }
 }
 

@@ -15,7 +15,7 @@ lazy_static! {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Index(usize);
 
-pub struct Outline<E, T>
+pub struct Requirements<E, T>
 where
     E: Debug,
     T: Copy,
@@ -25,13 +25,13 @@ where
     rev_deps: HashMap<Index, HashSet<Index>>,
 }
 
-impl<E, T> Outline<E, T>
+impl<E, T> Requirements<E, T>
 where
     E: Debug,
     T: Copy,
 {
     pub fn new() -> Self {
-        Outline {
+        Requirements {
             nodes: Vec::new(),
             deps: HashMap::new(),
             rev_deps: HashMap::new(),
@@ -123,7 +123,7 @@ where
     }
 }
 
-impl<E, T> Outline<E, T>
+impl<E, T> Requirements<E, T>
 where
     E: Clone + Debug,
     T: Copy,
@@ -133,7 +133,7 @@ where
     }
 }
 
-impl<E, T> Default for Outline<E, T>
+impl<E, T> Default for Requirements<E, T>
 where
     E: Debug,
     T: Copy,
@@ -150,7 +150,7 @@ where
     T: Copy,
 {
     rng: &'a mut R,
-    outline: &'a Outline<E, T>,
+    requirements: &'a Requirements<E, T>,
     weights: HashMap<Index, usize>,
     open: Vec<Index>,
     closed: HashSet<Index>,
@@ -174,7 +174,7 @@ where
             open,
             rng,
             closed,
-            outline,
+            requirements,
             ..
         } = self;
 
@@ -183,19 +183,18 @@ where
             .unwrap();
         open.retain(|&x| x != index);
         closed.insert(index);
-        open.extend(
-            outline
-                .rev_deps(index)
+        open.extend(requirements.rev_deps(index).iter().cloned().filter(|&src| {
+            requirements
+                .deps(src)
                 .iter()
-                .cloned()
-                .filter(|&src| outline.deps(src).iter().all(|dest| closed.contains(dest))),
-        );
+                .all(|dest| closed.contains(dest))
+        }));
 
-        outline.get(&index)
+        requirements.get(&index)
     }
 }
 
-impl<E, T> Outline<E, T>
+impl<E, T> Requirements<E, T>
 where
     E: Debug + Eq,
     T: Copy + Eq,
@@ -212,7 +211,7 @@ where
         }
         ActionIter {
             rng,
-            outline: self,
+            requirements: self,
             weights: self.reachable_counts(),
             open,
             closed: HashSet::new(),
@@ -224,7 +223,7 @@ where
     }
 }
 
-impl<A: Debug, T: Copy + Debug> Outline<A, T> {
+impl<A: Debug, T: Copy + Debug> Requirements<A, T> {
     pub fn show(&self) {
         for index in self.sorted() {
             let mut deps: Vec<_> = self
