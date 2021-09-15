@@ -10,6 +10,7 @@ fn split_rng<R: Rng>(rng: &mut R) -> impl Rng {
 }
 
 fn main() {
+    use crate::event_tree::Compacter as _;
     use crate::event_tree::Tree;
     use crate::outline::Outline;
     use crate::tunics::Compacter;
@@ -32,8 +33,12 @@ fn main() {
     });
     let compacter = Compacter { max_heads: 3 };
 
-    let actions = outline.action_iter(&mut rng2);
-    let tree = Tree::from_actions(&mut rng, actions, &compacter);
+    let tree = outline
+        .action_iter(&mut rng2)
+        .fold(Tree::default(), |tree, action| {
+            let tree = action.apply(&mut rng, tree);
+            compacter.compact(&mut rng, tree)
+        });
     let room = tree.into_room();
 
     /*

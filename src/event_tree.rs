@@ -28,6 +28,10 @@ where
         Tree::Branch(Vec::new())
     }
 
+    pub fn new_event(event: E) -> Self {
+        Tree::new().prepended(event)
+    }
+
     pub fn join(&mut self, other: Self) {
         match (self, other) {
             (Tree::Branch(ref mut u), Tree::Branch(mut v)) => {
@@ -159,33 +163,9 @@ pub trait Compacter<E>
 where
     E: Event,
 {
-    fn compact<R>(&self, rng: &mut R, heads: &mut Vec<Tree<E>>)
+    fn compact<R>(&self, rng: &mut R, tree: Tree<E>) -> Tree<E>
     where
         R: Rng;
-}
-
-impl<E> Tree<E>
-where
-    E: Debug + Event + Eq + Hash,
-{
-    pub fn from_actions<R, I, C, T>(rng: &mut R, actions: I, compacter: &C) -> Tree<E>
-    where
-        R: Rng,
-        I: IntoIterator<Item = Action<E, T>>,
-        C: Compacter<E>,
-        T: Transform<E>,
-    {
-        let mut heads = Vec::new();
-        for action in actions {
-            action.apply(rng, &mut heads);
-            compacter.compact(rng, &mut heads);
-        }
-        if heads.len() == 1 {
-            heads.pop().unwrap()
-        } else {
-            Tree::Branch(heads)
-        }
-    }
 }
 
 impl<E> Default for Tree<E>
@@ -215,31 +195,49 @@ where
     E: Debug + Eq + Event + Hash,
     T: Transform<E>,
 {
-    fn apply<R: Rng>(&self, rng: &mut R, heads: &mut Vec<Tree<E>>) {
+    pub fn apply<R: Rng>(&self, rng: &mut R, mut tree: Tree<E>) -> Tree<E> {
         use rand::prelude::SliceRandom;
 
         match self {
             Action::New(event) => {
-                heads.push(Tree::new().prepended(*event));
-            }
-            Action::PrependAny(event) => {
-                heads.choose_mut(rng).unwrap().prepend(*event);
-            }
-            Action::PrependEach(event) => {
-                for head in heads {
-                    head.prepend(*event);
+                let event = Tree::new_event(*event);
+                match tree {
+                    Tree::Branch(mut nodes) => {
+                        nodes.push(event);
+                        Tree::Branch(nodes)
+                    }
+                    _ => Tree::Branch(vec![tree, event]),
                 }
             }
-            Action::PrependGrouped(event) => {
-                let group = heads.drain(..).collect();
-                let new_head = Tree::Branch(group).prepended(*event);
-                heads.push(new_head)
-            }
-            Action::TransformEach(transform) => {
-                for node in heads {
-                    transform.apply(rng, node);
+            Action::PrependAny(event) => match tree {
+                Tree::Branch(mut nodes) => {
+                    nodes.choose_mut(rng).unwrap().prepend(*event);
+                    Tree::Branch(nodes)
                 }
-            }
+                _ => tree.prepended(*event),
+            },
+            Action::PrependEach(event) => match tree {
+                Tree::Branch(mut nodes) => {
+                    for ref mut node in &mut nodes {
+                        node.prepend(*event);
+                    }
+                    Tree::Branch(nodes)
+                }
+                _ => tree.prepended(*event),
+            },
+            Action::PrependGrouped(event) => tree.prepended(*event),
+            Action::TransformEach(transform) => match tree {
+                Tree::Branch(mut nodes) => {
+                    for ref mut node in &mut nodes {
+                        transform.apply(rng, node);
+                    }
+                    Tree::Branch(nodes)
+                }
+                _ => {
+                    transform.apply(rng, &mut tree);
+                    tree
+                }
+            },
         }
     }
 }

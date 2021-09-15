@@ -218,18 +218,24 @@ pub struct Compacter {
 }
 
 impl event_tree::Compacter<Event> for Compacter {
-    fn compact<R>(&self, rng: &mut R, heads: &mut Vec<Tree<Event>>)
+    fn compact<R>(&self, rng: &mut R, tree: Tree<Event>) -> Tree<Event>
     where
         R: Rng,
     {
-        while heads.len() > self.max_heads {
-            let head = heads.remove(rng.gen_range(0..heads.len()));
-            let max_depth = heads.iter().fold(0, |acc: usize, node: &Tree<Event>| {
-                acc.max(node.max_depth())
-            });
-            let calc_join_weight = calc_join_weight(&head, max_depth);
-            let dist = WeightedIndex::new(heads.iter().map(calc_join_weight)).unwrap();
-            heads.get_mut(dist.sample(rng)).unwrap().join(head);
+        match tree {
+            Tree::Branch(mut nodes) => {
+                while nodes.len() > self.max_heads {
+                    let head = nodes.remove(rng.gen_range(0..nodes.len()));
+                    let max_depth = nodes.iter().fold(0, |acc: usize, node: &Tree<Event>| {
+                        acc.max(node.max_depth())
+                    });
+                    let calc_join_weight = calc_join_weight(&head, max_depth);
+                    let dist = WeightedIndex::new(nodes.iter().map(calc_join_weight)).unwrap();
+                    nodes.get_mut(dist.sample(rng)).unwrap().join(head);
+                }
+                Tree::Branch(nodes)
+            }
+            _ => tree,
         }
     }
 }
