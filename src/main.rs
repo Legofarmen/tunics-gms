@@ -9,6 +9,22 @@ fn split_rng<R: Rng>(rng: &mut R) -> impl Rng {
     rand::rngs::StdRng::seed_from_u64(rng.gen())
 }
 
+trait Check<T> {
+    fn check<F>(self, f: F) -> T
+    where
+        F: Fn(&T);
+}
+
+impl<T> Check<T> for T {
+    fn check<F>(self, f: F) -> T
+    where
+        F: Fn(&T),
+    {
+        f(&self);
+        self
+    }
+}
+
 fn main() {
     use crate::feature_tree::FeatureTree;
     use crate::requirements::Requirements;
@@ -23,27 +39,21 @@ fn main() {
     let mut rng = StdRng::seed_from_u64(seed);
     let mut rng2 = split_rng(&mut rng);
 
-    let requirements = Requirements::from(Config {
+    let _ = Requirements::from(Config {
         num_fairies: 1,
         num_cul_de_sacs: 1,
         num_small_keys: 2,
         treasures: [Treasure::BombsCounter].iter().cloned().collect(),
         //treasures: [].iter().cloned().collect(),
-    });
-    let tree = requirements
-        .action_iter(&mut rng2)
-        .fold(FeatureTree::default(), |tree, action| {
-            let tree = action.apply(&mut rng, tree);
-            compact(&mut rng, 3, tree)
-        });
-    let room = tree.into_room();
-
-    /*
-    requirements.show();
-    for action in &actions {
-        println!("{:?}", action);
-    }
-    tree.show();
-    */
-    room.show();
+    })
+    //.check(|requirements| requirements.show())
+    .action_iter(&mut rng2)
+    //.inspect(|action| println!("{:?}", action))
+    .fold(FeatureTree::default(), |tree, action| {
+        let tree = action.apply(&mut rng, tree);
+        compact(&mut rng, 3, tree)
+    })
+    //.check(|tree| tree.show())
+    .into_room()
+    .check(|room| room.show());
 }

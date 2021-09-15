@@ -153,7 +153,7 @@ pub enum Feature {
     Entrance,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct HideSmallChests;
 
 impl Transform<Feature> for HideSmallChests {
