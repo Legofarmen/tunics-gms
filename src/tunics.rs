@@ -155,30 +155,27 @@ pub enum Feature {
 pub struct HideSmallChests;
 
 impl Transform<Feature> for HideSmallChests {
-    fn apply<R: Rng>(&self, rng: &mut R, mut tree: Tree<Feature>) -> Tree<Feature> {
-        fn visit<R: Rng>(rng: &mut R, tree: &mut Tree<Feature>, is_below: bool) {
+    fn apply<R: Rng>(&self, rng: &mut R, tree: Tree<Feature>) -> Tree<Feature> {
+        fn visit<R: Rng>(rng: &mut R, tree: Tree<Feature>, is_below: bool) -> Tree<Feature> {
             match tree {
-                Tree::Feature(feature @ Feature::SmallChest(_), next) if is_below => {
-                    let treasure = if let Feature::SmallChest(treasure) = feature {
-                        *treasure
-                    } else {
-                        unreachable!()
-                    };
+                Tree::Feature(Feature::SmallChest(treasure), next) if is_below => {
+                    let next = visit(rng, *next, true);
                     if rng.gen_bool(0.5) {
-                        *feature = Feature::HiddenSmallChest(treasure);
-                    }
-                    visit(rng, next, true);
-                }
-                Tree::Feature(_, next) => visit(rng, next, is_below),
-                Tree::Branch(nodes) => {
-                    for node in nodes {
-                        visit(rng, node, is_below);
+                        next.prepended(Feature::HiddenSmallChest(treasure))
+                    } else {
+                        next.prepended(Feature::SmallChest(treasure))
                     }
                 }
+                Tree::Feature(feature, next) => visit(rng, *next, is_below).prepended(feature),
+                Tree::Branch(nodes) => Tree::Branch(
+                    nodes
+                        .into_iter()
+                        .map(|node| visit(rng, node, is_below))
+                        .collect(),
+                ),
             }
         }
-        visit(rng, &mut tree, false);
-        tree
+        visit(rng, tree, false)
     }
 }
 
