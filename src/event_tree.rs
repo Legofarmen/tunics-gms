@@ -195,7 +195,7 @@ where
     F: Debug + Eq + Feature + Hash,
     T: Transform<F>,
 {
-    pub fn apply<R: Rng>(&self, rng: &mut R, mut tree: Tree<F>) -> Tree<F> {
+    pub fn apply<R: Rng>(&self, rng: &mut R, tree: Tree<F>) -> Tree<F> {
         use rand::prelude::SliceRandom;
 
         match self {
@@ -227,16 +227,13 @@ where
             },
             Action::PrependGrouped(feature) => tree.prepended(*feature),
             Action::TransformEach(transform) => match tree {
-                Tree::Branch(mut nodes) => {
-                    for ref mut node in &mut nodes {
-                        transform.apply(rng, node);
-                    }
-                    Tree::Branch(nodes)
-                }
-                _ => {
-                    transform.apply(rng, &mut tree);
-                    tree
-                }
+                Tree::Branch(nodes) => Tree::Branch(
+                    nodes
+                        .into_iter()
+                        .map(|node| transform.apply(rng, node))
+                        .collect(),
+                ),
+                _ => transform.apply(rng, tree),
             },
         }
     }
@@ -252,7 +249,7 @@ pub trait Transform<F>: Copy
 where
     F: Feature,
 {
-    fn apply<R: Rng>(&self, rng: &mut R, tree: &mut Tree<F>);
+    fn apply<R: Rng>(&self, rng: &mut R, tree: Tree<F>) -> Tree<F>;
 }
 
 pub trait Room: Sized {

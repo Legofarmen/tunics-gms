@@ -155,7 +155,7 @@ pub enum Feature {
 pub struct HideSmallChests;
 
 impl Transform<Feature> for HideSmallChests {
-    fn apply<R: Rng>(&self, rng: &mut R, tree: &mut Tree<Feature>) {
+    fn apply<R: Rng>(&self, rng: &mut R, mut tree: Tree<Feature>) -> Tree<Feature> {
         fn visit<R: Rng>(rng: &mut R, tree: &mut Tree<Feature>, is_below: bool) {
             match tree {
                 Tree::Feature(feature @ Feature::SmallChest(_), next) if is_below => {
@@ -177,7 +177,8 @@ impl Transform<Feature> for HideSmallChests {
                 }
             }
         }
-        visit(rng, tree, false);
+        visit(rng, &mut tree, false);
+        tree
     }
 }
 
