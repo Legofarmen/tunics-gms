@@ -216,30 +216,24 @@ pub fn calc_join_weight(
     }
 }
 
-pub struct Compacter {
-    pub max_heads: usize,
-}
-
-impl feature_tree::Compacter<Feature> for Compacter {
-    fn compact<R>(&self, rng: &mut R, tree: FeatureTree) -> FeatureTree
-    where
-        R: Rng,
-    {
-        match tree {
-            FeatureTree::Branch(mut nodes) => {
-                while nodes.len() > self.max_heads {
-                    let head = nodes.remove(rng.gen_range(0..nodes.len()));
-                    let max_depth = nodes.iter().fold(0, |acc: usize, node: &FeatureTree| {
-                        acc.max(node.max_depth())
-                    });
-                    let calc_join_weight = calc_join_weight(&head, max_depth);
-                    let dist = WeightedIndex::new(nodes.iter().map(calc_join_weight)).unwrap();
-                    nodes.get_mut(dist.sample(rng)).unwrap().join(head);
-                }
-                FeatureTree::Branch(nodes)
+pub fn compact<R>(rng: &mut R, max_width: usize, tree: FeatureTree) -> FeatureTree
+where
+    R: Rng,
+{
+    match tree {
+        FeatureTree::Branch(mut nodes) => {
+            while nodes.len() > max_width {
+                let head = nodes.remove(rng.gen_range(0..nodes.len()));
+                let max_depth = nodes.iter().fold(0, |acc: usize, node: &FeatureTree| {
+                    acc.max(node.max_depth())
+                });
+                let calc_join_weight = calc_join_weight(&head, max_depth);
+                let dist = WeightedIndex::new(nodes.iter().map(calc_join_weight)).unwrap();
+                nodes.get_mut(dist.sample(rng)).unwrap().join(head);
             }
-            _ => tree,
+            FeatureTree::Branch(nodes)
         }
+        _ => tree,
     }
 }
 

@@ -136,15 +136,6 @@ where
     }
 }
 
-pub trait Compacter<F>
-where
-    F: Feature,
-{
-    fn compact<R>(&self, rng: &mut R, tree: FeatureTree<F>) -> FeatureTree<F>
-    where
-        R: Rng;
-}
-
 impl<F> Default for FeatureTree<F>
 where
     F: Feature + Debug,

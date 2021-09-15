@@ -10,10 +10,9 @@ fn split_rng<R: Rng>(rng: &mut R) -> impl Rng {
 }
 
 fn main() {
-    use crate::feature_tree::Compacter as _;
     use crate::feature_tree::FeatureTree;
     use crate::outline::Outline;
-    use crate::tunics::Compacter;
+    use crate::tunics::compact;
     use crate::tunics::Config;
     use crate::tunics::Treasure;
     use rand::rngs::StdRng;
@@ -31,13 +30,11 @@ fn main() {
         treasures: [Treasure::BombsCounter].iter().cloned().collect(),
         //treasures: [].iter().cloned().collect(),
     });
-    let compacter = Compacter { max_heads: 3 };
-
     let tree = outline
         .action_iter(&mut rng2)
         .fold(FeatureTree::default(), |tree, action| {
             let tree = action.apply(&mut rng, tree);
-            compacter.compact(&mut rng, tree)
+            compact(&mut rng, 3, tree)
         });
     let room = tree.into_room();
 
