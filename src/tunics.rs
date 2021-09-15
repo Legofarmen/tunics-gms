@@ -1,7 +1,7 @@
-use crate::event_tree;
-use crate::event_tree::Action;
-use crate::event_tree::Transform;
-use crate::event_tree::Tree;
+use crate::feature_tree;
+use crate::feature_tree::Action;
+use crate::feature_tree::Transform;
+use crate::feature_tree::Tree;
 use crate::outline::Outline;
 use rand::distributions::weighted::WeightedIndex;
 use rand::distributions::Distribution;
@@ -217,7 +217,7 @@ pub struct Compacter {
     pub max_heads: usize,
 }
 
-impl event_tree::Compacter<Feature> for Compacter {
+impl feature_tree::Compacter<Feature> for Compacter {
     fn compact<R>(&self, rng: &mut R, tree: Tree<Feature>) -> Tree<Feature>
     where
         R: Rng,
@@ -304,7 +304,7 @@ impl Room {
     }
 }
 
-impl event_tree::Room for Room {
+impl feature_tree::Room for Room {
     fn add_exits<I>(mut self, exits: I) -> Self
     where
         I: IntoIterator<Item = Self>,
@@ -314,7 +314,7 @@ impl event_tree::Room for Room {
     }
 }
 
-impl event_tree::Feature for Feature {
+impl feature_tree::Feature for Feature {
     type Room = Room;
 
     fn apply(self, mut room: Room) -> Result<Room, (Self, Room)> {

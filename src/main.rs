@@ -1,4 +1,4 @@
-pub mod event_tree;
+pub mod feature_tree;
 pub mod outline;
 pub mod tunics;
 
@@ -10,8 +10,8 @@ fn split_rng<R: Rng>(rng: &mut R) -> impl Rng {
 }
 
 fn main() {
-    use crate::event_tree::Compacter as _;
-    use crate::event_tree::Tree;
+    use crate::feature_tree::Compacter as _;
+    use crate::feature_tree::Tree;
     use crate::outline::Outline;
     use crate::tunics::Compacter;
     use crate::tunics::Config;
