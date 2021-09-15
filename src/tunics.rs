@@ -251,15 +251,15 @@ pub enum Lock {
 }
 
 #[derive(Clone)]
-pub struct Room<T, O, L> {
-    pub entrance: Option<L>,
-    pub exits: Vec<Room<T, O, L>>,
-    pub chest: Option<T>,
-    pub obstacle: Option<O>,
+pub struct Room {
+    pub entrance: Option<Lock>,
+    pub exits: Vec<Room>,
+    pub chest: Option<Treasure>,
+    pub obstacle: Option<Obstacle>,
     pub far_side_chest: Option<bool>,
 }
 
-impl<T, O, L> Default for Room<T, O, L> {
+impl Default for Room {
     fn default() -> Self {
         Room {
             entrance: None,
@@ -271,19 +271,9 @@ impl<T, O, L> Default for Room<T, O, L> {
     }
 }
 
-impl<T, O, L> Room<T, O, L>
-where
-    T: std::fmt::Debug,
-    O: std::fmt::Debug,
-    L: std::fmt::Debug,
-{
+impl Room {
     pub fn show(&self) {
-        fn visit<T, O, L>(indent: usize, room: &Room<T, O, L>)
-        where
-            T: std::fmt::Debug,
-            O: std::fmt::Debug,
-            L: std::fmt::Debug,
-        {
+        fn visit(indent: usize, room: &Room) {
             let lock = if let Some(lock) = &room.entrance {
                 format!("{:?}", lock)
             } else {
@@ -317,7 +307,7 @@ where
     }
 }
 
-impl event_tree::Room for Room<Treasure, Obstacle, Lock> {
+impl event_tree::Room for Room {
     fn add_exits<I>(mut self, exits: I) -> Self
     where
         I: IntoIterator<Item = Self>,
@@ -328,70 +318,70 @@ impl event_tree::Room for Room<Treasure, Obstacle, Lock> {
 }
 
 impl event_tree::Feature for Feature {
-    type Room = Room<Treasure, Obstacle, Lock>;
+    type Room = Room;
 
-    fn apply(&self, room: &mut Room<Treasure, Obstacle, Lock>) -> bool {
+    fn apply(self, mut room: Room) -> Result<Room, (Self, Room)> {
         match self {
             Feature::Boss
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
                 room.obstacle = Some(Obstacle::Boss);
                 room.entrance = Some(Lock::BigKey);
-                true
+                Ok(room)
             }
             Feature::Obstacle(obstacle) if room.entrance.is_none() && room.obstacle.is_none() => {
-                room.obstacle = Some(*obstacle);
+                room.obstacle = Some(obstacle);
                 if room.chest.is_some() {
                     room.far_side_chest = Some(true);
                 }
-                true
+                Ok(room)
             }
             Feature::SmallChest(treasure) if room.entrance.is_none() && room.chest.is_none() => {
-                room.chest = Some(*treasure);
+                room.chest = Some(treasure);
                 if room.obstacle.is_some() {
                     room.far_side_chest = Some(false);
                 }
-                true
+                Ok(room)
             }
             Feature::HiddenSmallChest(treasure)
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
-                room.chest = Some(*treasure);
+                room.chest = Some(treasure);
                 room.obstacle = Some(Obstacle::Puzzle);
-                true
+                Ok(room)
             }
             Feature::BigChest(treasure)
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
-                room.chest = Some(*treasure);
+                room.chest = Some(treasure);
                 room.obstacle = Some(Obstacle::BigChest);
-                true
+                Ok(room)
             }
             Feature::SmallKeyDoor if room.entrance.is_none() => {
                 room.entrance = Some(Lock::SmallKey);
-                true
+                Ok(room)
             }
             Feature::Entrance
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
                 room.obstacle = Some(Obstacle::Entrance);
-                true
+                Ok(room)
             }
             Feature::CulDeSac
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
                 room.obstacle = Some(Obstacle::CulDeSac);
                 room.chest = Some(Treasure::NoChest);
-                true
+                Ok(room)
             }
             Feature::Fairy
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
                 room.obstacle = Some(Obstacle::Fairy);
                 room.chest = Some(Treasure::NoChest);
-                true
+                Ok(room)
             }
-            _ => false,
+            _ => Err((self, room)),
         }
     }
 }

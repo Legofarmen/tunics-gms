@@ -90,14 +90,14 @@ where
     pub fn into_room(self) -> F::Room {
         match self {
             Tree::Feature(feature, child) => {
-                let mut room = child.into_room();
-                if feature.apply(&mut room) {
-                    room
-                } else {
-                    let mut room = F::Room::default().add_exits(vec![room]);
-                    feature.apply(&mut room);
-                    room
-                }
+                let (Ok(room) | Err(room)) =
+                    feature.apply(child.into_room()).map_err(|(feature, room)| {
+                        feature
+                            .apply(F::Room::default().add_exits(vec![room]))
+                            .ok()
+                            .unwrap()
+                    });
+                room
             }
             Tree::Branch(nodes) => {
                 let nodes: Vec<_> = nodes.into_iter().map(|node| node.into_room()).collect();
@@ -216,10 +216,10 @@ where
     }
 }
 
-pub trait Feature: Copy {
-    type Room: Room + Default;
+pub trait Feature: Copy + Debug {
+    type Room: Default + Room;
 
-    fn apply(&self, room: &mut Self::Room) -> bool;
+    fn apply(self, room: Self::Room) -> Result<Self::Room, (Self, Self::Room)>;
 }
 
 pub trait Transform<F>: Copy
