@@ -2,34 +2,34 @@ use rand::Rng;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-pub trait Visitor<E>
+pub trait Visitor<F>
 where
-    E: Event,
+    F: Feature,
 {
-    fn visit_event(&mut self, event: &E, next: Tree<E>) -> E::Room;
+    fn visit_feature(&mut self, feature: &F, next: Tree<F>) -> F::Room;
 
-    fn visit_branch(&mut self, nodes: Vec<Tree<E>>) -> E::Room;
+    fn visit_branch(&mut self, nodes: Vec<Tree<F>>) -> F::Room;
 }
 
 #[derive(Clone)]
-pub enum Tree<E>
+pub enum Tree<F>
 where
-    E: Event,
+    F: Feature,
 {
-    Event(E, Box<Tree<E>>),
-    Branch(Vec<Tree<E>>),
+    Feature(F, Box<Tree<F>>),
+    Branch(Vec<Tree<F>>),
 }
 
-impl<E> Tree<E>
+impl<F> Tree<F>
 where
-    E: Event,
+    F: Feature,
 {
     pub fn new() -> Self {
         Tree::Branch(Vec::new())
     }
 
-    pub fn new_event(event: E) -> Self {
-        Tree::new().prepended(event)
+    pub fn new_feature(feature: F) -> Self {
+        Tree::new().prepended(feature)
     }
 
     pub fn join(&mut self, other: Self) {
@@ -37,8 +37,8 @@ where
             (Tree::Branch(ref mut u), Tree::Branch(mut v)) => {
                 u.append(&mut v);
             }
-            (Tree::Branch(ref mut u), event) => {
-                u.push(event);
+            (Tree::Branch(ref mut u), feature) => {
+                u.push(feature);
             }
             (this, Tree::Branch(mut u)) => {
                 u.push((*this).clone());
@@ -50,36 +50,36 @@ where
         }
     }
 
-    pub fn prepend(&mut self, event: E) {
-        *self = Tree::Event(event, Box::new(self.clone()));
+    pub fn prepend(&mut self, feature: F) {
+        *self = Tree::Feature(feature, Box::new(self.clone()));
     }
 
-    pub fn prepended(self, event: E) -> Self {
-        Tree::Event(event, Box::new(self))
+    pub fn prepended(self, feature: F) -> Self {
+        Tree::Feature(feature, Box::new(self))
     }
 
-    pub fn skip_event(&mut self) {
-        if let Tree::Event(_, next) = self {
+    pub fn skip_feature(&mut self) {
+        if let Tree::Feature(_, next) = self {
             *self = (**next).clone();
         }
     }
 
-    pub fn find_event_depth<'a, P>(&'a self, predicate: &P) -> Option<usize>
+    pub fn find_feature_depth<'a, P>(&'a self, predicate: &P) -> Option<usize>
     where
-        P: Fn(&'a E) -> bool,
-        E: 'a,
+        P: Fn(&'a F) -> bool,
+        F: 'a,
     {
         match self {
-            Tree::Event(event, next) => {
-                if predicate(event) {
+            Tree::Feature(feature, next) => {
+                if predicate(feature) {
                     Some(0)
                 } else {
-                    next.find_event_depth(predicate).map(|depth| depth + 1)
+                    next.find_feature_depth(predicate).map(|depth| depth + 1)
                 }
             }
             Tree::Branch(nodes) => nodes
                 .iter()
-                .map(|node| node.find_event_depth(predicate).map(|depth| depth + 1))
+                .map(|node| node.find_feature_depth(predicate).map(|depth| depth + 1))
                 .fold(None, |acc, depth| match (acc, depth) {
                     (Some(acc), Some(depth)) => Some(acc.min(depth)),
                     (acc, depth) => acc.or(depth),
@@ -89,59 +89,59 @@ where
 
     pub fn max_depth(&self) -> usize {
         match self {
-            Tree::Event(_, next) => next.max_depth() + 1,
+            Tree::Feature(_, next) => next.max_depth() + 1,
             Tree::Branch(nodes) => nodes
                 .iter()
                 .fold(1, |acc, node| acc.max(node.max_depth() + 1)),
         }
     }
 
-    pub fn accept<V>(self, visitor: &mut V) -> E::Room
+    pub fn accept<V>(self, visitor: &mut V) -> F::Room
     where
-        V: Visitor<E>,
+        V: Visitor<F>,
     {
         match self {
-            Tree::Event(event, next) => visitor.visit_event(&event, (*next).clone()),
+            Tree::Feature(feature, next) => visitor.visit_feature(&feature, (*next).clone()),
             Tree::Branch(nodes) => visitor.visit_branch(nodes),
         }
     }
 
-    pub fn into_room(self) -> E::Room {
+    pub fn into_room(self) -> F::Room {
         struct V;
 
-        impl<E: Event> Visitor<E> for V {
-            fn visit_event(&mut self, event: &E, next: Tree<E>) -> E::Room {
+        impl<F: Feature> Visitor<F> for V {
+            fn visit_feature(&mut self, feature: &F, next: Tree<F>) -> F::Room {
                 let mut room = next.accept(self);
-                if event.apply(&mut room) {
+                if feature.apply(&mut room) {
                     room
                 } else {
-                    let mut room = E::Room::default().add_exits(vec![room]);
-                    event.apply(&mut room);
+                    let mut room = F::Room::default().add_exits(vec![room]);
+                    feature.apply(&mut room);
                     room
                 }
             }
 
-            fn visit_branch(&mut self, nodes: Vec<Tree<E>>) -> E::Room {
+            fn visit_branch(&mut self, nodes: Vec<Tree<F>>) -> F::Room {
                 let nodes: Vec<_> = nodes.into_iter().map(|node| node.accept(self)).collect();
-                E::Room::default().add_exits(nodes)
+                F::Room::default().add_exits(nodes)
             }
         }
         self.accept(&mut V)
     }
 }
 
-impl<E> Tree<E>
+impl<F> Tree<F>
 where
-    E: Event + Debug,
+    F: Feature + Debug,
 {
     pub fn show(&self) {
-        fn visit<E>(node: &Tree<E>, mark: bool, indent: usize)
+        fn visit<F>(node: &Tree<F>, mark: bool, indent: usize)
         where
-            E: Event + Debug,
+            F: Feature + Debug,
         {
             let prefix = if mark { "+ " } else { "  " };
             match node {
-                Tree::Event(e, t) => {
+                Tree::Feature(e, t) => {
                     println!("{:indent$}{}{:?}", "", prefix, e, indent = indent);
                     visit(t, false, indent);
                 }
@@ -159,18 +159,18 @@ where
     }
 }
 
-pub trait Compacter<E>
+pub trait Compacter<F>
 where
-    E: Event,
+    F: Feature,
 {
-    fn compact<R>(&self, rng: &mut R, tree: Tree<E>) -> Tree<E>
+    fn compact<R>(&self, rng: &mut R, tree: Tree<F>) -> Tree<F>
     where
         R: Rng;
 }
 
-impl<E> Default for Tree<E>
+impl<F> Default for Tree<F>
 where
-    E: Event + Debug,
+    F: Feature + Debug,
 {
     fn default() -> Self {
         Tree::new()
@@ -178,54 +178,54 @@ where
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Action<E, T>
+pub enum Action<F, T>
 where
-    E: Debug,
+    F: Debug,
     T: Copy,
 {
-    New(E),
-    PrependAny(E),
-    PrependEach(E),
-    PrependGrouped(E),
+    New(F),
+    PrependAny(F),
+    PrependEach(F),
+    PrependGrouped(F),
     TransformEach(T),
 }
 
-impl<E, T> Action<E, T>
+impl<F, T> Action<F, T>
 where
-    E: Debug + Eq + Event + Hash,
-    T: Transform<E>,
+    F: Debug + Eq + Feature + Hash,
+    T: Transform<F>,
 {
-    pub fn apply<R: Rng>(&self, rng: &mut R, mut tree: Tree<E>) -> Tree<E> {
+    pub fn apply<R: Rng>(&self, rng: &mut R, mut tree: Tree<F>) -> Tree<F> {
         use rand::prelude::SliceRandom;
 
         match self {
-            Action::New(event) => {
-                let event = Tree::new_event(*event);
+            Action::New(feature) => {
+                let feature = Tree::new_feature(*feature);
                 match tree {
                     Tree::Branch(mut nodes) => {
-                        nodes.push(event);
+                        nodes.push(feature);
                         Tree::Branch(nodes)
                     }
-                    _ => Tree::Branch(vec![tree, event]),
+                    _ => Tree::Branch(vec![tree, feature]),
                 }
             }
-            Action::PrependAny(event) => match tree {
+            Action::PrependAny(feature) => match tree {
                 Tree::Branch(mut nodes) => {
-                    nodes.choose_mut(rng).unwrap().prepend(*event);
+                    nodes.choose_mut(rng).unwrap().prepend(*feature);
                     Tree::Branch(nodes)
                 }
-                _ => tree.prepended(*event),
+                _ => tree.prepended(*feature),
             },
-            Action::PrependEach(event) => match tree {
+            Action::PrependEach(feature) => match tree {
                 Tree::Branch(mut nodes) => {
                     for ref mut node in &mut nodes {
-                        node.prepend(*event);
+                        node.prepend(*feature);
                     }
                     Tree::Branch(nodes)
                 }
-                _ => tree.prepended(*event),
+                _ => tree.prepended(*feature),
             },
-            Action::PrependGrouped(event) => tree.prepended(*event),
+            Action::PrependGrouped(feature) => tree.prepended(*feature),
             Action::TransformEach(transform) => match tree {
                 Tree::Branch(mut nodes) => {
                     for ref mut node in &mut nodes {
@@ -242,17 +242,17 @@ where
     }
 }
 
-pub trait Event: Copy {
+pub trait Feature: Copy {
     type Room: Room + Default;
 
     fn apply(&self, room: &mut Self::Room) -> bool;
 }
 
-pub trait Transform<E>: Copy
+pub trait Transform<F>: Copy
 where
-    E: Event,
+    F: Feature,
 {
-    fn apply<R: Rng>(&self, rng: &mut R, tree: &mut Tree<E>);
+    fn apply<R: Rng>(&self, rng: &mut R, tree: &mut Tree<F>);
 }
 
 pub trait Room: Sized {
@@ -269,8 +269,8 @@ mod tests {
         Tree::Branch(Vec::new())
     }
 
-    pub fn event(tree: Tree<()>) -> Tree<()> {
-        Tree::Event((), Box::new(tree))
+    pub fn feature(tree: Tree<()>) -> Tree<()> {
+        Tree::Feature((), Box::new(tree))
     }
 
     pub fn branch1(node: Tree<()>) -> Tree<()> {
@@ -287,16 +287,16 @@ mod tests {
         assert_eq!(2, branch1(leaf()).max_depth());
         assert_eq!(2, branch2(leaf(), leaf()).max_depth());
         assert_eq!(3, branch1(branch1(leaf())).max_depth());
-        assert_eq!(2, event(leaf()).max_depth());
-        assert_eq!(3, event(event(leaf())).max_depth());
+        assert_eq!(2, feature(leaf()).max_depth());
+        assert_eq!(3, feature(feature(leaf())).max_depth());
 
         assert_eq!(
             7,
             branch2(
-                event(leaf()),
-                event(branch2(
-                    event(event(event(leaf()))),
-                    event(event(event(leaf()))),
+                feature(leaf()),
+                feature(branch2(
+                    feature(feature(feature(leaf()))),
+                    feature(feature(feature(leaf()))),
                 )),
             )
             .max_depth()

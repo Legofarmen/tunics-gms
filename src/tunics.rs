@@ -18,36 +18,36 @@ pub struct Config {
     pub treasures: HashSet<Treasure>,
 }
 
-impl From<Config> for Outline<Event, HideSmallChests> {
-    fn from(config: Config) -> Outline<Event, HideSmallChests> {
+impl From<Config> for Outline<Feature, HideSmallChests> {
+    fn from(config: Config) -> Outline<Feature, HideSmallChests> {
         let mut outline = Outline::new();
-        let entrance = outline.node(Action::PrependGrouped(Event::Entrance));
+        let entrance = outline.node(Action::PrependGrouped(Feature::Entrance));
 
         for _ in 0..config.num_cul_de_sacs {
-            let cul_de_sac = outline.node(Action::New(Event::CulDeSac));
+            let cul_de_sac = outline.node(Action::New(Feature::CulDeSac));
             outline.dep(entrance, cul_de_sac);
         }
 
         for _ in 0..config.num_fairies {
-            let fairy = outline.node(Action::New(Event::Fairy));
+            let fairy = outline.node(Action::New(Feature::Fairy));
             outline.dep(entrance, fairy);
         }
 
-        let boss = outline.node(Action::New(Event::Boss));
-        let big_key = outline.node(Action::New(Event::SmallChest(Treasure::BigKey)));
+        let boss = outline.node(Action::New(Feature::Boss));
+        let big_key = outline.node(Action::New(Feature::SmallChest(Treasure::BigKey)));
         outline.dep(big_key, boss);
 
         let hide_chests = outline.node(Action::TransformEach(HideSmallChests));
-        let compass = outline.node(Action::New(Event::SmallChest(Treasure::Compass)));
+        let compass = outline.node(Action::New(Feature::SmallChest(Treasure::Compass)));
         outline.dep(hide_chests, boss);
         outline.dep(compass, hide_chests);
         outline.dep(entrance, compass);
 
         for treasure in &config.treasures {
-            let big_chest = outline.node(Action::New(Event::BigChest(*treasure)));
+            let big_chest = outline.node(Action::New(Feature::BigChest(*treasure)));
             outline.dep(big_key, big_chest);
             for obstacle in treasure.get_obstacles() {
-                let obstacle = outline.node(Action::PrependEach(Event::Obstacle(*obstacle)));
+                let obstacle = outline.node(Action::PrependEach(Feature::Obstacle(*obstacle)));
                 outline.dep(big_chest, obstacle);
                 outline.dep(obstacle, boss);
             }
@@ -55,7 +55,7 @@ impl From<Config> for Outline<Event, HideSmallChests> {
 
         let mut last_locked_door = None;
         for i in 0..config.num_small_keys {
-            let locked_door = outline.node(Action::PrependAny(Event::SmallKeyDoor));
+            let locked_door = outline.node(Action::PrependAny(Feature::SmallKeyDoor));
             if let Some(last_locked_door) = last_locked_door {
                 outline.dep(locked_door, last_locked_door);
             } else {
@@ -65,7 +65,7 @@ impl From<Config> for Outline<Event, HideSmallChests> {
                 let mut last_small_key = None;
                 for j in 0..config.num_small_keys {
                     let small_key =
-                        outline.node(Action::New(Event::SmallChest(Treasure::SmallKey)));
+                        outline.node(Action::New(Feature::SmallChest(Treasure::SmallKey)));
                     if let Some(last_small_key) = last_small_key {
                         outline.dep(small_key, last_small_key);
                     } else {
@@ -83,12 +83,14 @@ impl From<Config> for Outline<Event, HideSmallChests> {
             outline.dep(entrance, big_key);
         }
 
-        let map = outline.node(Action::New(Event::SmallChest(Treasure::Map)));
+        let map = outline.node(Action::New(Feature::SmallChest(Treasure::Map)));
         if let Some(weak_wall) =
-            outline.index(Action::PrependEach(Event::Obstacle(Obstacle::WeakWall)))
+            outline.index(Action::PrependEach(Feature::Obstacle(Obstacle::WeakWall)))
         {
             let very_weak_wall = outline
-                .index(Action::PrependEach(Event::Obstacle(Obstacle::VeryWeakWall)))
+                .index(Action::PrependEach(Feature::Obstacle(
+                    Obstacle::VeryWeakWall,
+                )))
                 .unwrap();
             outline.dep(very_weak_wall, weak_wall);
             outline.dep(map, very_weak_wall);
@@ -137,7 +139,7 @@ impl Treasure {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum Event {
+pub enum Feature {
     Boss,
     CulDeSac,
     Fairy,
@@ -152,22 +154,22 @@ pub enum Event {
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub struct HideSmallChests;
 
-impl Transform<Event> for HideSmallChests {
-    fn apply<R: Rng>(&self, rng: &mut R, tree: &mut Tree<Event>) {
-        fn visit<R: Rng>(rng: &mut R, tree: &mut Tree<Event>, is_below: bool) {
+impl Transform<Feature> for HideSmallChests {
+    fn apply<R: Rng>(&self, rng: &mut R, tree: &mut Tree<Feature>) {
+        fn visit<R: Rng>(rng: &mut R, tree: &mut Tree<Feature>, is_below: bool) {
             match tree {
-                Tree::Event(event @ Event::SmallChest(_), next) if is_below => {
-                    let treasure = if let Event::SmallChest(treasure) = event {
+                Tree::Feature(feature @ Feature::SmallChest(_), next) if is_below => {
+                    let treasure = if let Feature::SmallChest(treasure) = feature {
                         *treasure
                     } else {
                         unreachable!()
                     };
                     if rng.gen_bool(0.5) {
-                        *event = Event::HiddenSmallChest(treasure);
+                        *feature = Feature::HiddenSmallChest(treasure);
                     }
                     visit(rng, next, true);
                 }
-                Tree::Event(_, next) => visit(rng, next, is_below),
+                Tree::Feature(_, next) => visit(rng, next, is_below),
                 Tree::Branch(nodes) => {
                     for node in nodes {
                         visit(rng, node, is_below);
@@ -180,21 +182,21 @@ impl Transform<Event> for HideSmallChests {
 }
 
 pub fn calc_join_weight(
-    tree: &Tree<Event>,
+    tree: &Tree<Feature>,
     global_max_depth: usize,
-) -> Box<dyn Fn(&Tree<Event>) -> usize> {
-    fn big_key_pred(event: &Event) -> bool {
+) -> Box<dyn Fn(&Tree<Feature>) -> usize> {
+    fn big_key_pred(feature: &Feature) -> bool {
         matches!(
-            event,
-            Event::Boss | Event::BigChest(_) | Event::SmallChest(Treasure::BigKey)
+            feature,
+            Feature::Boss | Feature::BigChest(_) | Feature::SmallChest(Treasure::BigKey)
         )
     }
-    let depth = tree.find_event_depth(&big_key_pred);
+    let depth = tree.find_feature_depth(&big_key_pred);
     if depth.is_some() {
         Box::new(move |node| {
             let node_max_depth = node.max_depth();
             let big_key_depth = node
-                .find_event_depth(&big_key_pred)
+                .find_feature_depth(&big_key_pred)
                 .unwrap_or(global_max_depth);
             NODE_DEPTH_WEIGHT * (global_max_depth - node_max_depth)
                 + BIG_KEY_DEPTH_WEIGHT * big_key_depth
@@ -204,7 +206,7 @@ pub fn calc_join_weight(
         Box::new(move |node| {
             let node_max_depth = node.max_depth();
             let big_key_depth = node
-                .find_event_depth(&big_key_pred)
+                .find_feature_depth(&big_key_pred)
                 .unwrap_or(global_max_depth);
             NODE_DEPTH_WEIGHT * (global_max_depth - node_max_depth)
                 + BIG_KEY_DEPTH_WEIGHT * (global_max_depth - big_key_depth)
@@ -217,8 +219,8 @@ pub struct Compacter {
     pub max_heads: usize,
 }
 
-impl event_tree::Compacter<Event> for Compacter {
-    fn compact<R>(&self, rng: &mut R, tree: Tree<Event>) -> Tree<Event>
+impl event_tree::Compacter<Feature> for Compacter {
+    fn compact<R>(&self, rng: &mut R, tree: Tree<Feature>) -> Tree<Feature>
     where
         R: Rng,
     {
@@ -226,7 +228,7 @@ impl event_tree::Compacter<Event> for Compacter {
             Tree::Branch(mut nodes) => {
                 while nodes.len() > self.max_heads {
                     let head = nodes.remove(rng.gen_range(0..nodes.len()));
-                    let max_depth = nodes.iter().fold(0, |acc: usize, node: &Tree<Event>| {
+                    let max_depth = nodes.iter().fold(0, |acc: usize, node: &Tree<Feature>| {
                         acc.max(node.max_depth())
                     });
                     let calc_join_weight = calc_join_weight(&head, max_depth);
@@ -324,64 +326,64 @@ impl event_tree::Room for Room<Treasure, Obstacle, Lock> {
     }
 }
 
-impl event_tree::Event for Event {
+impl event_tree::Feature for Feature {
     type Room = Room<Treasure, Obstacle, Lock>;
 
     fn apply(&self, room: &mut Room<Treasure, Obstacle, Lock>) -> bool {
         match self {
-            Event::Boss
+            Feature::Boss
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
                 room.obstacle = Some(Obstacle::Boss);
                 room.entrance = Some(Lock::BigKey);
                 true
             }
-            Event::Obstacle(obstacle) if room.entrance.is_none() && room.obstacle.is_none() => {
+            Feature::Obstacle(obstacle) if room.entrance.is_none() && room.obstacle.is_none() => {
                 room.obstacle = Some(*obstacle);
                 if room.chest.is_some() {
                     room.far_side_chest = Some(true);
                 }
                 true
             }
-            Event::SmallChest(treasure) if room.entrance.is_none() && room.chest.is_none() => {
+            Feature::SmallChest(treasure) if room.entrance.is_none() && room.chest.is_none() => {
                 room.chest = Some(*treasure);
                 if room.obstacle.is_some() {
                     room.far_side_chest = Some(false);
                 }
                 true
             }
-            Event::HiddenSmallChest(treasure)
+            Feature::HiddenSmallChest(treasure)
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
                 room.chest = Some(*treasure);
                 room.obstacle = Some(Obstacle::Puzzle);
                 true
             }
-            Event::BigChest(treasure)
+            Feature::BigChest(treasure)
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
                 room.chest = Some(*treasure);
                 room.obstacle = Some(Obstacle::BigChest);
                 true
             }
-            Event::SmallKeyDoor if room.entrance.is_none() => {
+            Feature::SmallKeyDoor if room.entrance.is_none() => {
                 room.entrance = Some(Lock::SmallKey);
                 true
             }
-            Event::Entrance
+            Feature::Entrance
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
                 room.obstacle = Some(Obstacle::Entrance);
                 true
             }
-            Event::CulDeSac
+            Feature::CulDeSac
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
                 room.obstacle = Some(Obstacle::CulDeSac);
                 room.chest = Some(Treasure::NoChest);
                 true
             }
-            Event::Fairy
+            Feature::Fairy
                 if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
             {
                 room.obstacle = Some(Obstacle::Fairy);
