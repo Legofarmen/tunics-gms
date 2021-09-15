@@ -146,7 +146,7 @@ where
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Action<F, T>
+pub enum Command<F, T>
 where
     F: Debug,
     T: Copy,
@@ -158,7 +158,7 @@ where
     TransformEach(T),
 }
 
-impl<F, T> Action<F, T>
+impl<F, T> Command<F, T>
 where
     F: Debug + Eq + Feature + Hash,
     T: Transform<F>,
@@ -167,7 +167,7 @@ where
         use rand::prelude::SliceRandom;
 
         match self {
-            Action::New(feature) => {
+            Command::New(feature) => {
                 let feature = FeatureTree::new_feature(*feature);
                 match tree {
                     FeatureTree::Branch(mut nodes) => {
@@ -177,14 +177,14 @@ where
                     _ => FeatureTree::Branch(vec![tree, feature]),
                 }
             }
-            Action::PrependAny(feature) => match tree {
+            Command::PrependAny(feature) => match tree {
                 FeatureTree::Branch(mut nodes) => {
                     nodes.choose_mut(rng).unwrap().prepend(*feature);
                     FeatureTree::Branch(nodes)
                 }
                 _ => tree.prepended(*feature),
             },
-            Action::PrependEach(feature) => match tree {
+            Command::PrependEach(feature) => match tree {
                 FeatureTree::Branch(nodes) => FeatureTree::Branch(
                     nodes
                         .into_iter()
@@ -193,8 +193,8 @@ where
                 ),
                 _ => tree.prepended(*feature),
             },
-            Action::PrependGrouped(feature) => tree.prepended(*feature),
-            Action::TransformEach(transform) => match tree {
+            Command::PrependGrouped(feature) => tree.prepended(*feature),
+            Command::TransformEach(transform) => match tree {
                 FeatureTree::Branch(nodes) => FeatureTree::Branch(
                     nodes
                         .into_iter()

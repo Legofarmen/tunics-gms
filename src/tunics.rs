@@ -1,5 +1,5 @@
 use crate::feature_tree;
-use crate::feature_tree::Action;
+use crate::feature_tree::Command;
 use crate::feature_tree::Transform;
 use crate::requirements;
 use rand::distributions::weighted::WeightedIndex;
@@ -23,33 +23,34 @@ pub struct Config {
 impl From<Config> for Requirements {
     fn from(config: Config) -> Requirements {
         let mut requirements = Requirements::new();
-        let entrance = requirements.node(Action::PrependGrouped(Feature::Entrance));
+        let entrance = requirements.node(Command::PrependGrouped(Feature::Entrance));
 
         for _ in 0..config.num_cul_de_sacs {
-            let cul_de_sac = requirements.node(Action::New(Feature::CulDeSac));
+            let cul_de_sac = requirements.node(Command::New(Feature::CulDeSac));
             requirements.dep(entrance, cul_de_sac);
         }
 
         for _ in 0..config.num_fairies {
-            let fairy = requirements.node(Action::New(Feature::Fairy));
+            let fairy = requirements.node(Command::New(Feature::Fairy));
             requirements.dep(entrance, fairy);
         }
 
-        let boss = requirements.node(Action::New(Feature::Boss));
-        let big_key = requirements.node(Action::New(Feature::SmallChest(Treasure::BigKey)));
+        let boss = requirements.node(Command::New(Feature::Boss));
+        let big_key = requirements.node(Command::New(Feature::SmallChest(Treasure::BigKey)));
         requirements.dep(big_key, boss);
 
-        let hide_chests = requirements.node(Action::TransformEach(HideSmallChests));
-        let compass = requirements.node(Action::New(Feature::SmallChest(Treasure::Compass)));
+        let hide_chests = requirements.node(Command::TransformEach(HideSmallChests));
+        let compass = requirements.node(Command::New(Feature::SmallChest(Treasure::Compass)));
         requirements.dep(hide_chests, boss);
         requirements.dep(compass, hide_chests);
         requirements.dep(entrance, compass);
 
         for treasure in &config.treasures {
-            let big_chest = requirements.node(Action::New(Feature::BigChest(*treasure)));
+            let big_chest = requirements.node(Command::New(Feature::BigChest(*treasure)));
             requirements.dep(big_key, big_chest);
             for obstacle in treasure.get_obstacles() {
-                let obstacle = requirements.node(Action::PrependEach(Feature::Obstacle(*obstacle)));
+                let obstacle =
+                    requirements.node(Command::PrependEach(Feature::Obstacle(*obstacle)));
                 requirements.dep(big_chest, obstacle);
                 requirements.dep(obstacle, boss);
             }
@@ -57,7 +58,7 @@ impl From<Config> for Requirements {
 
         let mut last_locked_door = None;
         for i in 0..config.num_small_keys {
-            let locked_door = requirements.node(Action::PrependAny(Feature::SmallKeyDoor));
+            let locked_door = requirements.node(Command::PrependAny(Feature::SmallKeyDoor));
             if let Some(last_locked_door) = last_locked_door {
                 requirements.dep(locked_door, last_locked_door);
             } else {
@@ -67,7 +68,7 @@ impl From<Config> for Requirements {
                 let mut last_small_key = None;
                 for j in 0..config.num_small_keys {
                     let small_key =
-                        requirements.node(Action::New(Feature::SmallChest(Treasure::SmallKey)));
+                        requirements.node(Command::New(Feature::SmallChest(Treasure::SmallKey)));
                     if let Some(last_small_key) = last_small_key {
                         requirements.dep(small_key, last_small_key);
                     } else {
@@ -85,12 +86,12 @@ impl From<Config> for Requirements {
             requirements.dep(entrance, big_key);
         }
 
-        let map = requirements.node(Action::New(Feature::SmallChest(Treasure::Map)));
+        let map = requirements.node(Command::New(Feature::SmallChest(Treasure::Map)));
         if let Some(weak_wall) =
-            requirements.index(Action::PrependEach(Feature::Obstacle(Obstacle::WeakWall)))
+            requirements.index(Command::PrependEach(Feature::Obstacle(Obstacle::WeakWall)))
         {
             let very_weak_wall = requirements
-                .index(Action::PrependEach(Feature::Obstacle(
+                .index(Command::PrependEach(Feature::Obstacle(
                     Obstacle::VeryWeakWall,
                 )))
                 .unwrap();

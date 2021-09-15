@@ -1,4 +1,4 @@
-use crate::feature_tree::Action;
+use crate::feature_tree::Command;
 use bitvec::bitvec;
 use bitvec::vec::BitVec;
 use lazy_static::lazy_static;
@@ -20,7 +20,7 @@ where
     E: Debug,
     T: Copy,
 {
-    nodes: Vec<Action<E, T>>,
+    nodes: Vec<Command<E, T>>,
     deps: HashMap<Index, HashSet<Index>>,
     rev_deps: HashMap<Index, HashSet<Index>>,
 }
@@ -37,7 +37,7 @@ where
             rev_deps: HashMap::new(),
         }
     }
-    pub fn node(&mut self, action: Action<E, T>) -> Index {
+    pub fn node(&mut self, action: Command<E, T>) -> Index {
         let i = self.nodes.len();
         self.nodes.push(action);
         Index(i)
@@ -96,7 +96,7 @@ where
     pub fn indices(&self) -> impl Iterator<Item = Index> {
         (0..self.nodes.len()).map(Index)
     }
-    pub fn nodes(&self) -> &[Action<E, T>] {
+    pub fn nodes(&self) -> &[Command<E, T>] {
         self.nodes.as_slice()
     }
     pub fn deps(&self, source: Index) -> &HashSet<Index> {
@@ -128,7 +128,7 @@ where
     E: Clone + Debug,
     T: Copy,
 {
-    pub fn get(&self, index: &Index) -> Option<Action<E, T>> {
+    pub fn get(&self, index: &Index) -> Option<Command<E, T>> {
         self.nodes.get(index.0).cloned()
     }
 }
@@ -162,9 +162,9 @@ where
     R: Rng,
     T: Copy,
 {
-    type Item = Action<E, T>;
+    type Item = Command<E, T>;
 
-    fn next(&mut self) -> Option<Action<E, T>> {
+    fn next(&mut self) -> Option<Command<E, T>> {
         if self.open.is_empty() {
             return None;
         }
@@ -218,7 +218,7 @@ where
         }
     }
 
-    pub fn index(&self, action: Action<E, T>) -> Option<Index> {
+    pub fn index(&self, action: Command<E, T>) -> Option<Index> {
         self.nodes.iter().position(|a| *a == action).map(Index)
     }
 }
