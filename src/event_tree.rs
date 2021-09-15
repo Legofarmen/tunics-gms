@@ -2,15 +2,6 @@ use rand::Rng;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-pub trait Visitor<F>
-where
-    F: Feature,
-{
-    fn visit_feature(&mut self, feature: &F, next: Tree<F>) -> F::Room;
-
-    fn visit_branch(&mut self, nodes: Vec<Tree<F>>) -> F::Room;
-}
-
 #[derive(Clone)]
 pub enum Tree<F>
 where
@@ -96,22 +87,10 @@ where
         }
     }
 
-    pub fn accept<V>(self, visitor: &mut V) -> F::Room
-    where
-        V: Visitor<F>,
-    {
-        match self {
-            Tree::Feature(feature, next) => visitor.visit_feature(&feature, (*next).clone()),
-            Tree::Branch(nodes) => visitor.visit_branch(nodes),
-        }
-    }
-
     pub fn into_room(self) -> F::Room {
-        struct V;
-
-        impl<F: Feature> Visitor<F> for V {
-            fn visit_feature(&mut self, feature: &F, next: Tree<F>) -> F::Room {
-                let mut room = next.accept(self);
+        match self {
+            Tree::Feature(feature, child) => {
+                let mut room = child.into_room();
                 if feature.apply(&mut room) {
                     room
                 } else {
@@ -120,13 +99,11 @@ where
                     room
                 }
             }
-
-            fn visit_branch(&mut self, nodes: Vec<Tree<F>>) -> F::Room {
-                let nodes: Vec<_> = nodes.into_iter().map(|node| node.accept(self)).collect();
+            Tree::Branch(nodes) => {
+                let nodes: Vec<_> = nodes.into_iter().map(|node| node.into_room()).collect();
                 F::Room::default().add_exits(nodes)
             }
         }
-        self.accept(&mut V)
     }
 }
 
