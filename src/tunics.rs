@@ -1,12 +1,13 @@
 use crate::feature_tree;
 use crate::feature_tree::Action;
 use crate::feature_tree::Transform;
-use crate::feature_tree::Tree;
 use crate::outline::Outline;
 use rand::distributions::weighted::WeightedIndex;
 use rand::distributions::Distribution;
 use rand::Rng;
 use std::collections::HashSet;
+
+type FeatureTree = feature_tree::FeatureTree<Feature>;
 
 const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
@@ -155,10 +156,10 @@ pub enum Feature {
 pub struct HideSmallChests;
 
 impl Transform<Feature> for HideSmallChests {
-    fn apply<R: Rng>(&self, rng: &mut R, tree: Tree<Feature>) -> Tree<Feature> {
-        fn visit<R: Rng>(rng: &mut R, tree: Tree<Feature>, is_below: bool) -> Tree<Feature> {
+    fn apply<R: Rng>(&self, rng: &mut R, tree: FeatureTree) -> FeatureTree {
+        fn visit<R: Rng>(rng: &mut R, tree: FeatureTree, is_below: bool) -> FeatureTree {
             match tree {
-                Tree::Feature(Feature::SmallChest(treasure), next) if is_below => {
+                FeatureTree::Feature(Feature::SmallChest(treasure), next) if is_below => {
                     let next = visit(rng, *next, true);
                     if rng.gen_bool(0.5) {
                         next.prepended(Feature::HiddenSmallChest(treasure))
@@ -166,8 +167,10 @@ impl Transform<Feature> for HideSmallChests {
                         next.prepended(Feature::SmallChest(treasure))
                     }
                 }
-                Tree::Feature(feature, next) => visit(rng, *next, is_below).prepended(feature),
-                Tree::Branch(nodes) => Tree::Branch(
+                FeatureTree::Feature(feature, next) => {
+                    visit(rng, *next, is_below).prepended(feature)
+                }
+                FeatureTree::Branch(nodes) => FeatureTree::Branch(
                     nodes
                         .into_iter()
                         .map(|node| visit(rng, node, is_below))
@@ -180,9 +183,9 @@ impl Transform<Feature> for HideSmallChests {
 }
 
 pub fn calc_join_weight(
-    tree: &Tree<Feature>,
+    tree: &FeatureTree,
     global_max_depth: usize,
-) -> Box<dyn Fn(&Tree<Feature>) -> usize> {
+) -> Box<dyn Fn(&FeatureTree) -> usize> {
     fn big_key_pred(feature: &Feature) -> bool {
         matches!(
             feature,
@@ -218,22 +221,22 @@ pub struct Compacter {
 }
 
 impl feature_tree::Compacter<Feature> for Compacter {
-    fn compact<R>(&self, rng: &mut R, tree: Tree<Feature>) -> Tree<Feature>
+    fn compact<R>(&self, rng: &mut R, tree: FeatureTree) -> FeatureTree
     where
         R: Rng,
     {
         match tree {
-            Tree::Branch(mut nodes) => {
+            FeatureTree::Branch(mut nodes) => {
                 while nodes.len() > self.max_heads {
                     let head = nodes.remove(rng.gen_range(0..nodes.len()));
-                    let max_depth = nodes.iter().fold(0, |acc: usize, node: &Tree<Feature>| {
+                    let max_depth = nodes.iter().fold(0, |acc: usize, node: &FeatureTree| {
                         acc.max(node.max_depth())
                     });
                     let calc_join_weight = calc_join_weight(&head, max_depth);
                     let dist = WeightedIndex::new(nodes.iter().map(calc_join_weight)).unwrap();
                     nodes.get_mut(dist.sample(rng)).unwrap().join(head);
                 }
-                Tree::Branch(nodes)
+                FeatureTree::Branch(nodes)
             }
             _ => tree,
         }

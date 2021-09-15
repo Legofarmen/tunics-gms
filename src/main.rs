@@ -11,7 +11,7 @@ fn split_rng<R: Rng>(rng: &mut R) -> impl Rng {
 
 fn main() {
     use crate::feature_tree::Compacter as _;
-    use crate::feature_tree::Tree;
+    use crate::feature_tree::FeatureTree;
     use crate::outline::Outline;
     use crate::tunics::Compacter;
     use crate::tunics::Config;
@@ -35,7 +35,7 @@ fn main() {
 
     let tree = outline
         .action_iter(&mut rng2)
-        .fold(Tree::default(), |tree, action| {
+        .fold(FeatureTree::default(), |tree, action| {
             let tree = action.apply(&mut rng, tree);
             compacter.compact(&mut rng, tree)
         });
