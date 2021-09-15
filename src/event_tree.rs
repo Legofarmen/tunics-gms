@@ -203,11 +203,11 @@ where
     E: Debug,
     T: Copy,
 {
-    AddEvent(E),
+    New(E),
     PrependAny(E),
     PrependEach(E),
     PrependGrouped(E),
-    Transform(T),
+    TransformEach(T),
 }
 
 impl<E, T> Action<E, T>
@@ -219,7 +219,7 @@ where
         use rand::prelude::SliceRandom;
 
         match self {
-            Action::AddEvent(event) => {
+            Action::New(event) => {
                 heads.push(Tree::new().prepended(*event));
             }
             Action::PrependAny(event) => {
@@ -235,7 +235,7 @@ where
                 let new_head = Tree::Branch(group).prepended(*event);
                 heads.push(new_head)
             }
-            Action::Transform(transform) => {
+            Action::TransformEach(transform) => {
                 for node in heads {
                     transform.apply(rng, node);
                 }

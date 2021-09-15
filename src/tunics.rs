@@ -24,27 +24,27 @@ impl From<Config> for Outline<Event, HideSmallChests> {
         let entrance = outline.node(Action::PrependGrouped(Event::Entrance));
 
         for _ in 0..config.num_cul_de_sacs {
-            let cul_de_sac = outline.node(Action::AddEvent(Event::CulDeSac));
+            let cul_de_sac = outline.node(Action::New(Event::CulDeSac));
             outline.dep(entrance, cul_de_sac);
         }
 
         for _ in 0..config.num_fairies {
-            let fairy = outline.node(Action::AddEvent(Event::Fairy));
+            let fairy = outline.node(Action::New(Event::Fairy));
             outline.dep(entrance, fairy);
         }
 
-        let boss = outline.node(Action::AddEvent(Event::Boss));
-        let big_key = outline.node(Action::AddEvent(Event::SmallChest(Treasure::BigKey)));
+        let boss = outline.node(Action::New(Event::Boss));
+        let big_key = outline.node(Action::New(Event::SmallChest(Treasure::BigKey)));
         outline.dep(big_key, boss);
 
-        let hide_chests = outline.node(Action::Transform(HideSmallChests));
-        let compass = outline.node(Action::AddEvent(Event::SmallChest(Treasure::Compass)));
+        let hide_chests = outline.node(Action::TransformEach(HideSmallChests));
+        let compass = outline.node(Action::New(Event::SmallChest(Treasure::Compass)));
         outline.dep(hide_chests, boss);
         outline.dep(compass, hide_chests);
         outline.dep(entrance, compass);
 
         for treasure in &config.treasures {
-            let big_chest = outline.node(Action::AddEvent(Event::BigChest(*treasure)));
+            let big_chest = outline.node(Action::New(Event::BigChest(*treasure)));
             outline.dep(big_key, big_chest);
             for obstacle in treasure.get_obstacles() {
                 let obstacle = outline.node(Action::PrependEach(Event::Obstacle(*obstacle)));
@@ -65,7 +65,7 @@ impl From<Config> for Outline<Event, HideSmallChests> {
                 let mut last_small_key = None;
                 for j in 0..config.num_small_keys {
                     let small_key =
-                        outline.node(Action::AddEvent(Event::SmallChest(Treasure::SmallKey)));
+                        outline.node(Action::New(Event::SmallChest(Treasure::SmallKey)));
                     if let Some(last_small_key) = last_small_key {
                         outline.dep(small_key, last_small_key);
                     } else {
@@ -83,7 +83,7 @@ impl From<Config> for Outline<Event, HideSmallChests> {
             outline.dep(entrance, big_key);
         }
 
-        let map = outline.node(Action::AddEvent(Event::SmallChest(Treasure::Map)));
+        let map = outline.node(Action::New(Event::SmallChest(Treasure::Map)));
         if let Some(weak_wall) =
             outline.index(Action::PrependEach(Event::Obstacle(Obstacle::WeakWall)))
         {
