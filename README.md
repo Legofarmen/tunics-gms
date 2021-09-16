@@ -5,4 +5,4 @@ Tunics! was originally a Rogue-like Zelda fan-made quest. It means it's only dun
 
 Now, Tunics! will become it's own game, with it's own original features, and switching to GameMaker Studio 2 as the main engine.
 
-You can check the original project here: https://www.solarus-games.org/en/games/tunics
+You can check the original project here: https://tunics.legofarmen.se and https://github.com/Legofarmen/tunics.
