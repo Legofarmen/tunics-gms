@@ -3,54 +3,54 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 #[derive(Clone)]
-pub enum FeatureTree<F>
+pub enum FeaturePlan<F>
 where
     F: Feature,
 {
-    Feature(F, Box<FeatureTree<F>>),
-    Branch(Vec<FeatureTree<F>>),
+    Feature(F, Box<FeaturePlan<F>>),
+    Branch(Vec<FeaturePlan<F>>),
 }
 
-impl<F> FeatureTree<F>
+impl<F> FeaturePlan<F>
 where
     F: Feature,
 {
     pub fn new() -> Self {
-        FeatureTree::Branch(Vec::new())
+        FeaturePlan::Branch(Vec::new())
     }
 
     pub fn new_feature(feature: F) -> Self {
-        FeatureTree::new().prepended(feature)
+        FeaturePlan::new().prepended(feature)
     }
 
     pub fn join(&mut self, other: Self) {
         match (self, other) {
-            (FeatureTree::Branch(ref mut u), FeatureTree::Branch(mut v)) => {
+            (FeaturePlan::Branch(ref mut u), FeaturePlan::Branch(mut v)) => {
                 u.append(&mut v);
             }
-            (FeatureTree::Branch(ref mut u), feature) => {
+            (FeaturePlan::Branch(ref mut u), feature) => {
                 u.push(feature);
             }
-            (this, FeatureTree::Branch(mut u)) => {
+            (this, FeaturePlan::Branch(mut u)) => {
                 u.push((*this).clone());
-                *this = FeatureTree::Branch(u);
+                *this = FeaturePlan::Branch(u);
             }
             (this, f) => {
-                *this = FeatureTree::Branch(vec![(*this).clone(), f]);
+                *this = FeaturePlan::Branch(vec![(*this).clone(), f]);
             }
         }
     }
 
     pub fn prepend(&mut self, feature: F) {
-        *self = FeatureTree::Feature(feature, Box::new(self.clone()));
+        *self = FeaturePlan::Feature(feature, Box::new(self.clone()));
     }
 
     pub fn prepended(self, feature: F) -> Self {
-        FeatureTree::Feature(feature, Box::new(self))
+        FeaturePlan::Feature(feature, Box::new(self))
     }
 
     pub fn skip_feature(&mut self) {
-        if let FeatureTree::Feature(_, next) = self {
+        if let FeaturePlan::Feature(_, next) = self {
             *self = (**next).clone();
         }
     }
@@ -61,14 +61,14 @@ where
         F: 'a,
     {
         match self {
-            FeatureTree::Feature(feature, next) => {
+            FeaturePlan::Feature(feature, next) => {
                 if predicate(feature) {
                     Some(0)
                 } else {
                     next.find_feature_depth(predicate).map(|depth| depth + 1)
                 }
             }
-            FeatureTree::Branch(nodes) => nodes
+            FeaturePlan::Branch(nodes) => nodes
                 .iter()
                 .map(|node| node.find_feature_depth(predicate).map(|depth| depth + 1))
                 .fold(None, |acc, depth| match (acc, depth) {
@@ -80,8 +80,8 @@ where
 
     pub fn max_depth(&self) -> usize {
         match self {
-            FeatureTree::Feature(_, next) => next.max_depth() + 1,
-            FeatureTree::Branch(nodes) => nodes
+            FeaturePlan::Feature(_, next) => next.max_depth() + 1,
+            FeaturePlan::Branch(nodes) => nodes
                 .iter()
                 .fold(1, |acc, node| acc.max(node.max_depth() + 1)),
         }
@@ -89,7 +89,7 @@ where
 
     pub fn into_room(self) -> F::Room {
         match self {
-            FeatureTree::Feature(feature, child) => {
+            FeaturePlan::Feature(feature, child) => {
                 let (Ok(room) | Err(room)) =
                     feature.apply(child.into_room()).map_err(|(feature, room)| {
                         feature
@@ -99,7 +99,7 @@ where
                     });
                 room
             }
-            FeatureTree::Branch(nodes) => {
+            FeaturePlan::Branch(nodes) => {
                 let nodes: Vec<_> = nodes.into_iter().map(|node| node.into_room()).collect();
                 F::Room::default().add_exits(nodes)
             }
@@ -107,22 +107,22 @@ where
     }
 }
 
-impl<F> FeatureTree<F>
+impl<F> FeaturePlan<F>
 where
     F: Feature + Debug,
 {
     pub fn show(&self) {
-        fn visit<F>(node: &FeatureTree<F>, mark: bool, indent: usize)
+        fn visit<F>(node: &FeaturePlan<F>, mark: bool, indent: usize)
         where
             F: Feature + Debug,
         {
             let prefix = if mark { "+ " } else { "  " };
             match node {
-                FeatureTree::Feature(e, t) => {
+                FeaturePlan::Feature(e, t) => {
                     println!("{:indent$}{}{:?}", "", prefix, e, indent = indent);
                     visit(t, false, indent);
                 }
-                FeatureTree::Branch(ts) => {
+                FeaturePlan::Branch(ts) => {
                     if !ts.is_empty() {
                         println!("{:indent$}{}<branch>", "", prefix, indent = indent);
                         for t in ts {
@@ -136,12 +136,12 @@ where
     }
 }
 
-impl<F> Default for FeatureTree<F>
+impl<F> Default for FeaturePlan<F>
 where
     F: Feature + Debug,
 {
     fn default() -> Self {
-        FeatureTree::new()
+        FeaturePlan::new()
     }
 }
 
@@ -163,29 +163,29 @@ where
     F: Debug + Eq + Feature + Hash,
     T: Transform<F>,
 {
-    pub fn apply<R: Rng>(&self, rng: &mut R, tree: FeatureTree<F>) -> FeatureTree<F> {
+    pub fn apply<R: Rng>(&self, rng: &mut R, tree: FeaturePlan<F>) -> FeaturePlan<F> {
         use rand::prelude::SliceRandom;
 
         match self {
             Command::New(feature) => {
-                let feature = FeatureTree::new_feature(*feature);
+                let feature = FeaturePlan::new_feature(*feature);
                 match tree {
-                    FeatureTree::Branch(mut nodes) => {
+                    FeaturePlan::Branch(mut nodes) => {
                         nodes.push(feature);
-                        FeatureTree::Branch(nodes)
+                        FeaturePlan::Branch(nodes)
                     }
-                    _ => FeatureTree::Branch(vec![tree, feature]),
+                    _ => FeaturePlan::Branch(vec![tree, feature]),
                 }
             }
             Command::PrependAny(feature) => match tree {
-                FeatureTree::Branch(mut nodes) => {
+                FeaturePlan::Branch(mut nodes) => {
                     nodes.choose_mut(rng).unwrap().prepend(*feature);
-                    FeatureTree::Branch(nodes)
+                    FeaturePlan::Branch(nodes)
                 }
                 _ => tree.prepended(*feature),
             },
             Command::PrependEach(feature) => match tree {
-                FeatureTree::Branch(nodes) => FeatureTree::Branch(
+                FeaturePlan::Branch(nodes) => FeaturePlan::Branch(
                     nodes
                         .into_iter()
                         .map(|node| node.prepended(*feature))
@@ -195,7 +195,7 @@ where
             },
             Command::PrependGrouped(feature) => tree.prepended(*feature),
             Command::TransformEach(transform) => match tree {
-                FeatureTree::Branch(nodes) => FeatureTree::Branch(
+                FeaturePlan::Branch(nodes) => FeaturePlan::Branch(
                     nodes
                         .into_iter()
                         .map(|node| transform.apply(rng, node))
@@ -217,7 +217,7 @@ pub trait Transform<F>: Copy
 where
     F: Feature,
 {
-    fn apply<R: Rng>(&self, rng: &mut R, tree: FeatureTree<F>) -> FeatureTree<F>;
+    fn apply<R: Rng>(&self, rng: &mut R, tree: FeaturePlan<F>) -> FeaturePlan<F>;
 }
 
 pub trait Room: Sized {
@@ -230,20 +230,20 @@ pub trait Room: Sized {
 mod tests {
     use super::*;
 
-    pub fn leaf() -> FeatureTree<()> {
-        FeatureTree::Branch(Vec::new())
+    pub fn leaf() -> FeaturePlan<()> {
+        FeaturePlan::Branch(Vec::new())
     }
 
-    pub fn feature(tree: FeatureTree<()>) -> FeatureTree<()> {
-        FeatureTree::Feature((), Box::new(tree))
+    pub fn feature(tree: FeaturePlan<()>) -> FeaturePlan<()> {
+        FeaturePlan::Feature((), Box::new(tree))
     }
 
-    pub fn branch1(node: FeatureTree<()>) -> FeatureTree<()> {
-        FeatureTree::Branch(vec![node])
+    pub fn branch1(node: FeaturePlan<()>) -> FeaturePlan<()> {
+        FeaturePlan::Branch(vec![node])
     }
 
-    pub fn branch2(node1: FeatureTree<()>, node2: FeatureTree<()>) -> FeatureTree<()> {
-        FeatureTree::Branch(vec![node1, node2])
+    pub fn branch2(node1: FeaturePlan<()>, node2: FeaturePlan<()>) -> FeaturePlan<()> {
+        FeaturePlan::Branch(vec![node1, node2])
     }
 
     #[test]

@@ -1,14 +1,14 @@
-use crate::feature_tree;
-use crate::feature_tree::Command;
-use crate::feature_tree::Transform;
-use crate::requirements;
+use crate::core::build;
+use crate::core::feature;
+use crate::core::feature::Command;
+use crate::core::feature::Transform;
 use rand::distributions::weighted::WeightedIndex;
 use rand::distributions::Distribution;
 use rand::Rng;
 use std::collections::HashSet;
 
-type FeatureTree = feature_tree::FeatureTree<Feature>;
-type Requirements = requirements::Requirements<Feature, HideSmallChests>;
+type FeaturePlan = feature::FeaturePlan<Feature>;
+type BuildPlan = build::BuildPlan<Feature, HideSmallChests>;
 
 const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
@@ -20,62 +20,61 @@ pub struct Config {
     pub treasures: HashSet<Treasure>,
 }
 
-impl From<Config> for Requirements {
-    fn from(config: Config) -> Requirements {
-        let mut requirements = Requirements::new();
-        let entrance = requirements.node(Command::PrependGrouped(Feature::Entrance));
+impl From<Config> for BuildPlan {
+    fn from(config: Config) -> BuildPlan {
+        let mut build_plan = BuildPlan::new();
+        let entrance = build_plan.node(Command::PrependGrouped(Feature::Entrance));
 
         for _ in 0..config.num_cul_de_sacs {
-            let cul_de_sac = requirements.node(Command::New(Feature::CulDeSac));
-            requirements.dep(entrance, cul_de_sac);
+            let cul_de_sac = build_plan.node(Command::New(Feature::CulDeSac));
+            build_plan.dep(entrance, cul_de_sac);
         }
 
         for _ in 0..config.num_fairies {
-            let fairy = requirements.node(Command::New(Feature::Fairy));
-            requirements.dep(entrance, fairy);
+            let fairy = build_plan.node(Command::New(Feature::Fairy));
+            build_plan.dep(entrance, fairy);
         }
 
-        let boss = requirements.node(Command::New(Feature::Boss));
-        let big_key = requirements.node(Command::New(Feature::SmallChest(Treasure::BigKey)));
-        requirements.dep(big_key, boss);
+        let boss = build_plan.node(Command::New(Feature::Boss));
+        let big_key = build_plan.node(Command::New(Feature::SmallChest(Treasure::BigKey)));
+        build_plan.dep(big_key, boss);
 
-        let hide_chests = requirements.node(Command::TransformEach(HideSmallChests));
-        let compass = requirements.node(Command::New(Feature::SmallChest(Treasure::Compass)));
-        requirements.dep(hide_chests, boss);
-        requirements.dep(compass, hide_chests);
-        requirements.dep(entrance, compass);
+        let hide_chests = build_plan.node(Command::TransformEach(HideSmallChests));
+        let compass = build_plan.node(Command::New(Feature::SmallChest(Treasure::Compass)));
+        build_plan.dep(hide_chests, boss);
+        build_plan.dep(compass, hide_chests);
+        build_plan.dep(entrance, compass);
 
         for treasure in &config.treasures {
-            let big_chest = requirements.node(Command::New(Feature::BigChest(*treasure)));
-            requirements.dep(big_key, big_chest);
+            let big_chest = build_plan.node(Command::New(Feature::BigChest(*treasure)));
+            build_plan.dep(big_key, big_chest);
             for obstacle in treasure.get_obstacles() {
-                let obstacle =
-                    requirements.node(Command::PrependEach(Feature::Obstacle(*obstacle)));
-                requirements.dep(big_chest, obstacle);
-                requirements.dep(obstacle, boss);
+                let obstacle = build_plan.node(Command::PrependEach(Feature::Obstacle(*obstacle)));
+                build_plan.dep(big_chest, obstacle);
+                build_plan.dep(obstacle, boss);
             }
         }
 
         let mut last_locked_door = None;
         for i in 0..config.num_small_keys {
-            let locked_door = requirements.node(Command::PrependAny(Feature::SmallKeyDoor));
+            let locked_door = build_plan.node(Command::PrependAny(Feature::SmallKeyDoor));
             if let Some(last_locked_door) = last_locked_door {
-                requirements.dep(locked_door, last_locked_door);
+                build_plan.dep(locked_door, last_locked_door);
             } else {
-                requirements.dep(locked_door, big_key);
+                build_plan.dep(locked_door, big_key);
             }
             if i == config.num_small_keys - 1 {
                 let mut last_small_key = None;
                 for j in 0..config.num_small_keys {
                     let small_key =
-                        requirements.node(Command::New(Feature::SmallChest(Treasure::SmallKey)));
+                        build_plan.node(Command::New(Feature::SmallChest(Treasure::SmallKey)));
                     if let Some(last_small_key) = last_small_key {
-                        requirements.dep(small_key, last_small_key);
+                        build_plan.dep(small_key, last_small_key);
                     } else {
-                        requirements.dep(small_key, locked_door);
+                        build_plan.dep(small_key, locked_door);
                     }
                     if j == config.num_small_keys - 1 {
-                        requirements.dep(entrance, small_key);
+                        build_plan.dep(entrance, small_key);
                     }
                     last_small_key = Some(small_key);
                 }
@@ -83,26 +82,26 @@ impl From<Config> for Requirements {
             last_locked_door = Some(locked_door);
         }
         if config.num_small_keys == 0 {
-            requirements.dep(entrance, big_key);
+            build_plan.dep(entrance, big_key);
         }
 
-        let map = requirements.node(Command::New(Feature::SmallChest(Treasure::Map)));
+        let map = build_plan.node(Command::New(Feature::SmallChest(Treasure::Map)));
         if let Some(weak_wall) =
-            requirements.index(Command::PrependEach(Feature::Obstacle(Obstacle::WeakWall)))
+            build_plan.index(Command::PrependEach(Feature::Obstacle(Obstacle::WeakWall)))
         {
-            let very_weak_wall = requirements
+            let very_weak_wall = build_plan
                 .index(Command::PrependEach(Feature::Obstacle(
                     Obstacle::VeryWeakWall,
                 )))
                 .unwrap();
-            requirements.dep(very_weak_wall, weak_wall);
-            requirements.dep(map, very_weak_wall);
+            build_plan.dep(very_weak_wall, weak_wall);
+            build_plan.dep(map, very_weak_wall);
         } else {
-            requirements.dep(map, boss);
+            build_plan.dep(map, boss);
         }
-        requirements.dep(entrance, map);
+        build_plan.dep(entrance, map);
 
-        requirements
+        build_plan
     }
 }
 
@@ -158,10 +157,10 @@ pub enum Feature {
 pub struct HideSmallChests;
 
 impl Transform<Feature> for HideSmallChests {
-    fn apply<R: Rng>(&self, rng: &mut R, tree: FeatureTree) -> FeatureTree {
-        fn visit<R: Rng>(rng: &mut R, tree: FeatureTree, is_below: bool) -> FeatureTree {
+    fn apply<R: Rng>(&self, rng: &mut R, tree: FeaturePlan) -> FeaturePlan {
+        fn visit<R: Rng>(rng: &mut R, tree: FeaturePlan, is_below: bool) -> FeaturePlan {
             match tree {
-                FeatureTree::Feature(Feature::SmallChest(treasure), next) if is_below => {
+                FeaturePlan::Feature(Feature::SmallChest(treasure), next) if is_below => {
                     let next = visit(rng, *next, true);
                     if rng.gen_bool(0.5) {
                         next.prepended(Feature::HiddenSmallChest(treasure))
@@ -169,10 +168,10 @@ impl Transform<Feature> for HideSmallChests {
                         next.prepended(Feature::SmallChest(treasure))
                     }
                 }
-                FeatureTree::Feature(feature, next) => {
+                FeaturePlan::Feature(feature, next) => {
                     visit(rng, *next, is_below).prepended(feature)
                 }
-                FeatureTree::Branch(nodes) => FeatureTree::Branch(
+                FeaturePlan::Branch(nodes) => FeaturePlan::Branch(
                     nodes
                         .into_iter()
                         .map(|node| visit(rng, node, is_below))
@@ -185,9 +184,9 @@ impl Transform<Feature> for HideSmallChests {
 }
 
 pub fn calc_join_weight(
-    tree: &FeatureTree,
+    tree: &FeaturePlan,
     global_max_depth: usize,
-) -> Box<dyn Fn(&FeatureTree) -> usize> {
+) -> Box<dyn Fn(&FeaturePlan) -> usize> {
     fn big_key_pred(feature: &Feature) -> bool {
         matches!(
             feature,
@@ -218,22 +217,22 @@ pub fn calc_join_weight(
     }
 }
 
-pub fn compact<R>(rng: &mut R, max_width: usize, tree: FeatureTree) -> FeatureTree
+pub fn compact<R>(rng: &mut R, max_width: usize, tree: FeaturePlan) -> FeaturePlan
 where
     R: Rng,
 {
     match tree {
-        FeatureTree::Branch(mut nodes) => {
+        FeaturePlan::Branch(mut nodes) => {
             while nodes.len() > max_width {
                 let head = nodes.remove(rng.gen_range(0..nodes.len()));
-                let max_depth = nodes.iter().fold(0, |acc: usize, node: &FeatureTree| {
+                let max_depth = nodes.iter().fold(0, |acc: usize, node: &FeaturePlan| {
                     acc.max(node.max_depth())
                 });
                 let calc_join_weight = calc_join_weight(&head, max_depth);
                 let dist = WeightedIndex::new(nodes.iter().map(calc_join_weight)).unwrap();
                 nodes.get_mut(dist.sample(rng)).unwrap().join(head);
             }
-            FeatureTree::Branch(nodes)
+            FeaturePlan::Branch(nodes)
         }
         _ => tree,
     }
@@ -243,7 +242,6 @@ where
 pub enum Lock {
     SmallKey,
     BigKey,
-    Full,
 }
 
 #[derive(Clone)]
@@ -303,7 +301,7 @@ impl Room {
     }
 }
 
-impl feature_tree::Room for Room {
+impl feature::Room for Room {
     fn add_exits<I>(mut self, exits: I) -> Self
     where
         I: IntoIterator<Item = Self>,
@@ -313,7 +311,7 @@ impl feature_tree::Room for Room {
     }
 }
 
-impl feature_tree::Feature for Feature {
+impl feature::Feature for Feature {
     type Room = Room;
 
     fn apply(self, mut room: Room) -> Result<Room, (Self, Room)> {
