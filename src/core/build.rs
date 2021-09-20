@@ -20,9 +20,9 @@ where
     E: Debug,
     T: Copy,
 {
-    nodes: Vec<Command<E, T>>,
-    deps: HashMap<Index, HashSet<Index>>,
-    rev_deps: HashMap<Index, HashSet<Index>>,
+    steps: Vec<Command<E, T>>,
+    outgoing: HashMap<Index, HashSet<Index>>, // (Source, Target)
+    incoming: HashMap<Index, HashSet<Index>>, // (Target, Source)
 }
 
 impl<E, T> BuildPlan<E, T>
@@ -32,22 +32,22 @@ where
 {
     pub fn new() -> Self {
         BuildPlan {
-            nodes: Vec::new(),
-            deps: HashMap::new(),
-            rev_deps: HashMap::new(),
+            steps: Vec::new(),
+            outgoing: HashMap::new(),
+            incoming: HashMap::new(),
         }
     }
-    pub fn node(&mut self, action: Command<E, T>) -> Index {
-        let i = self.nodes.len();
-        self.nodes.push(action);
+    pub fn step(&mut self, action: Command<E, T>) -> Index {
+        let i = self.steps.len();
+        self.steps.push(action);
         Index(i)
     }
-    pub fn dep(&mut self, source: Index, dest: Index) {
-        self.deps
+    pub fn arc(&mut self, source: Index, dest: Index) {
+        self.outgoing
             .entry(source)
             .or_insert_with(HashSet::new)
             .insert(dest);
-        self.rev_deps
+        self.incoming
             .entry(dest)
             .or_insert_with(HashSet::new)
             .insert(source);
@@ -55,7 +55,7 @@ where
     pub fn sorted(&self) -> Vec<Index> {
         fn visit(
             index: Index,
-            deps: &HashMap<Index, HashSet<Index>>,
+            outgoing: &HashMap<Index, HashSet<Index>>,
             permanent: &mut HashSet<Index>,
             temporary: &mut HashSet<Index>,
             result: &mut Vec<Index>,
@@ -67,9 +67,9 @@ where
                 panic!("not a DAG");
             }
             temporary.insert(index);
-            if let Some(targets) = deps.get(&index) {
+            if let Some(targets) = outgoing.get(&index) {
                 for target in targets {
-                    visit(*target, deps, permanent, temporary, result);
+                    visit(*target, outgoing, permanent, temporary, result);
                 }
             }
             temporary.remove(&index);
@@ -79,13 +79,13 @@ where
         let mut permanent = HashSet::new();
         let mut temporary = HashSet::new();
         let mut result = Vec::new();
-        while let Some(index) = (0..self.nodes.len())
+        while let Some(index) = (0..self.steps.len())
             .map(Index)
-            .find(|node| !permanent.contains(node))
+            .find(|step| !permanent.contains(step))
         {
             visit(
                 index,
-                &self.deps,
+                &self.outgoing,
                 &mut permanent,
                 &mut temporary,
                 &mut result,
@@ -94,24 +94,24 @@ where
         result
     }
     pub fn indices(&self) -> impl Iterator<Item = Index> {
-        (0..self.nodes.len()).map(Index)
+        (0..self.steps.len()).map(Index)
     }
-    pub fn nodes(&self) -> &[Command<E, T>] {
-        self.nodes.as_slice()
+    pub fn steps(&self) -> &[Command<E, T>] {
+        self.steps.as_slice()
     }
-    pub fn deps(&self, source: Index) -> &HashSet<Index> {
-        self.deps.get(&source).unwrap_or(&EMPTY_SET)
+    pub fn outgoing(&self, source: Index) -> &HashSet<Index> {
+        self.outgoing.get(&source).unwrap_or(&EMPTY_SET)
     }
-    pub fn rev_deps(&self, source: Index) -> &HashSet<Index> {
-        self.rev_deps.get(&source).unwrap_or(&EMPTY_SET)
+    pub fn incoming(&self, source: Index) -> &HashSet<Index> {
+        self.incoming.get(&source).unwrap_or(&EMPTY_SET)
     }
     pub fn reachable_counts(&self) -> HashMap<Index, usize> {
         let mut masks: HashMap<Index, BitVec> = HashMap::new();
-        let len = self.nodes.len();
+        let len = self.steps.len();
         for index in self.sorted().iter().rev() {
             let mut bv = masks.remove(index).unwrap_or_else(|| bitvec![0; len]);
             bv.insert(index.0, true);
-            for src in self.rev_deps(*index) {
+            for src in self.incoming(*index) {
                 *bv |= masks.get(src).unwrap().clone();
             }
             masks.insert(*index, bv);
@@ -129,7 +129,7 @@ where
     T: Copy,
 {
     pub fn get(&self, index: &Index) -> Option<Command<E, T>> {
-        self.nodes.get(index.0).cloned()
+        self.steps.get(index.0).cloned()
     }
 }
 
@@ -143,7 +143,7 @@ where
     }
 }
 
-pub struct ActionIter<'a, E, T, R>
+pub struct BuildSequence<'a, E, T, R>
 where
     E: Debug,
     R: Rng,
@@ -156,7 +156,7 @@ where
     closed: HashSet<Index>,
 }
 
-impl<'a, E, T, R> Iterator for ActionIter<'a, E, T, R>
+impl<'a, E, T, R> Iterator for BuildSequence<'a, E, T, R>
 where
     E: Clone + Debug,
     R: Rng,
@@ -169,7 +169,7 @@ where
             return None;
         }
 
-        let ActionIter {
+        let BuildSequence {
             weights,
             open,
             rng,
@@ -183,9 +183,9 @@ where
             .unwrap();
         open.retain(|&x| x != index);
         closed.insert(index);
-        open.extend(build_plan.rev_deps(index).iter().cloned().filter(|&src| {
+        open.extend(build_plan.incoming(index).iter().cloned().filter(|&src| {
             build_plan
-                .deps(src)
+                .outgoing(src)
                 .iter()
                 .all(|dest| closed.contains(dest))
         }));
@@ -199,17 +199,17 @@ where
     E: Debug + Eq,
     T: Copy + Eq,
 {
-    pub fn action_iter<'a, R>(&'a self, rng: &'a mut R) -> ActionIter<'a, E, T, R>
+    pub fn build_sequence<'a, R>(&'a self, rng: &'a mut R) -> BuildSequence<'a, E, T, R>
     where
         R: Rng,
     {
         let mut open = Vec::new();
         for index in self.indices() {
-            if self.deps(index).is_empty() {
+            if self.outgoing(index).is_empty() {
                 open.push(index);
             }
         }
-        ActionIter {
+        BuildSequence {
             rng,
             build_plan: self,
             weights: self.reachable_counts(),
@@ -219,26 +219,26 @@ where
     }
 
     pub fn index(&self, action: Command<E, T>) -> Option<Index> {
-        self.nodes.iter().position(|a| *a == action).map(Index)
+        self.steps.iter().position(|a| *a == action).map(Index)
     }
 }
 
 impl<A: Debug, T: Copy + Debug> BuildPlan<A, T> {
     pub fn show(&self) {
         for index in self.sorted() {
-            let mut deps: Vec<_> = self
-                .deps
+            let mut outgoing: Vec<_> = self
+                .outgoing
                 .get(&index)
                 .iter()
                 .flat_map(|indices| indices.iter())
                 .map(|index| format!("{}", index.0))
                 .collect();
-            deps.sort();
+            outgoing.sort();
             println!(
                 "{}. {:?} ({})",
                 index.0,
-                self.nodes[index.0],
-                deps.join(", ")
+                self.steps[index.0],
+                outgoing.join(", ")
             );
         }
     }

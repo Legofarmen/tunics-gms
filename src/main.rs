@@ -45,7 +45,7 @@ fn main() {
         //treasures: [].iter().cloned().collect(),
     })
     //.check(|requirements| requirements.show())
-    .action_iter(&mut rng2)
+    .build_sequence(&mut rng2)
     //.inspect(|action| println!("{:?}", action))
     .fold(FeaturePlan::default(), |tree, action| {
         let tree = action.apply(&mut rng, tree);
