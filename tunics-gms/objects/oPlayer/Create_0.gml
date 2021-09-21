@@ -1,8 +1,4 @@
 /// @description Vars and Input declaration
-_up = vk_up;
-_down =  vk_down;
-_left = vk_left;
-_right = vk_right;
 _atk = ord("X");
 _interact = ord("Z")
 _ztarget = ord("D");
@@ -24,6 +20,6 @@ animationEnd = false;
 state = "free";
 life = 3;
 max_life = 3;
-ztargeting = false;
+ztarget = noone;
 ztarget_id = noone;
 socket = 0;

@@ -1,4 +1,5 @@
 /// @description Insert description here
+global.pause = false;
 aspect_ratio = display_get_width()/display_get_height();
 view_height = 180;
 view_width = round(view_height*aspect_ratio);

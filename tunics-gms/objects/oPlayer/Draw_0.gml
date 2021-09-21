@@ -26,3 +26,18 @@ if(flash > 0){
     shader_reset();
     }
 #endregion
+#region Z Target
+if(ztarget == noone){
+	if(inputZtarget && instance_exists(oEnemyMole)){
+		ztarget = instance_nearest(x,y,oEnemyMole);
+		
+	}
+}else{
+	var zw = sprite_get_width(ztarget.sprite_index);
+	var zh = sprite_get_height(ztarget.sprite_index);
+	draw_sprite_ext(sZtargeting,0,ztarget.x+(zw/2),ztarget.y+(zh/2),-1,1,180,c_white,1); //DownRight
+	draw_sprite_ext(sZtargeting,0,ztarget.x-(zw/2),ztarget.y+(zh/2),-1,1,90,c_white,1); //DownLeft
+	draw_sprite_ext(sZtargeting,0,ztarget.x+(zw/2),ztarget.y-(zh/2),1,1,0,c_white,1); //UpRight
+	draw_sprite_ext(sZtargeting,0,ztarget.x-(zw/2),ztarget.y-(zh/2),1,-1,180,c_white,1); //UpLeft
+}
+#endregion

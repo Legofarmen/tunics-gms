@@ -7,7 +7,7 @@ _vida -= _vidaFrac;
 var vida_x = 1;
 var vida_y = 1;
 
-var SEPARATION = 14;
+var SEPARATION = 12;
 var playerid_buffer = 12;
 
 for(var i = 1; i <= max_life; i++){
