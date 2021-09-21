@@ -5,7 +5,7 @@ inputU = keyboard_check(global.key_up);
 inputL = keyboard_check(global.key_left);
 inputR = keyboard_check(global.key_right);
 inputD = keyboard_check(global.key_down);
-inputAtk = keyboard_check(global.key_attack);
+inputAtk = keyboard_check_pressed(global.key_attack);
 inputZtarget = keyboard_check_pressed(_ztarget);
 inputHoldInteract = keyboard_check(global.key_interact);
 
