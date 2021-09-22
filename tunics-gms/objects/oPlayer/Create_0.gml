@@ -1,8 +1,4 @@
 /// @description Vars and Input declaration
-_atk = ord("X");
-_interact = ord("Z")
-_ztarget = ord("D");
-
 inputMagnitude = 0;
 inputDirection = 0;
 

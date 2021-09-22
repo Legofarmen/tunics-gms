@@ -6,7 +6,9 @@ global.key_up		= vk_up;
 global.key_down		= vk_down;
 global.key_attack   = ord("X");
 global.key_interact = ord("Z");
+global.key_target = ord("D");
 
+#region enums
 enum menu_page{
 	mainmenu,
 	gametype,
@@ -26,6 +28,8 @@ enum menu_type{
 	toggle,
 	input
 }
+#endregion
+#region Menu Page creations
 //MAIN MENU
 ds_menu_main = create_menu_page(
 	["START GAME",	menu_type.page_transfer,	menu_page.gametype],
@@ -36,7 +40,7 @@ ds_menu_main = create_menu_page(
 ds_menu_gametype = create_menu_page(
 	["SINGLE PLAYER",	menu_type.script_run,		menu_singleplayer],
 	["MULTIPLAYER",		menu_type.page_transfer,	menu_page.multiplayer],
-	["DIFFICULTY",		menu_type.shift,			menu_change_difficulty, 0, ["COWARD","OKAY","GAMER","HARDCORE","IMPOSSIBLE"]],
+	["DIFFICULTY",		menu_type.shift,			menu_change_difficulty, 0, ["SIMPLE","OKAY","GAMER","HARDCORE","IMPOSSIBLE"]],
 	["< BACK",			menu_type.page_transfer,	menu_page.mainmenu] 
 );
 
@@ -79,6 +83,7 @@ ds_menu_controls = create_menu_page(
 	["RIGHT",	menu_type.input, "key_right", vk_right],
 	["INTERACT (A)",menu_type.input, "key_interact", ord("Z")],
 	["ATTACK (B)",menu_type.input, "key_attack", ord("X")],
+	["TARGET (Z)",menu_type.input, "key_target", ord("D")],
 	["< BACK",	menu_type.page_transfer,	menu_page.options]
 );
 
@@ -87,6 +92,7 @@ ds_menu_pause =	create_menu_page(
 	["OPTIONS",	menu_type.page_transfer,	menu_page.options],
 	["EXIT",	menu_type.script_run,		menu_exit] //Exit finishes the room and goes back to mainmenu.
 );
+#endregion
 
 page = 0;
 menu_pages = [ds_menu_main,ds_menu_gametype,ds_menu_multiplayer,ds_menu_options,ds_menu_audio,
@@ -99,6 +105,9 @@ repeat(array_len){
 }
 
 inputting = false;
+
+audio_group_load(audiogroup_soundfx);
+audio_group_load(audiogroup_music);
 
 //Networking, do not delete
 global.ip_address = "127.0.0.1";

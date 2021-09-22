@@ -7,14 +7,14 @@
   "type": 0,
   "bitDepth": 1,
   "audioGroupId": {
-    "name": "audiogroup_default",
-    "path": "audiogroups/audiogroup_default",
+    "name": "audiogroup_soundfx",
+    "path": "audiogroups/audiogroup_soundfx",
   },
   "soundFile": "sndDeath.wav",
   "duration": 0.482154,
   "parent": {
-    "name": "Sounds",
-    "path": "folders/Sounds.yy",
+    "name": "soundfx",
+    "path": "folders/Sounds/soundfx.yy",
   },
   "resourceVersion": "1.0",
   "name": "sndDeath",

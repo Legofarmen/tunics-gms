@@ -6,7 +6,7 @@ inputL = keyboard_check(global.key_left);
 inputR = keyboard_check(global.key_right);
 inputD = keyboard_check(global.key_down);
 inputAtk = keyboard_check_pressed(global.key_attack);
-inputZtarget = keyboard_check_pressed(_ztarget);
+inputZtarget = keyboard_check_pressed(global.key_target);
 inputHoldInteract = keyboard_check(global.key_interact);
 
 inputMagnitude = (inputD - inputU != 0) || (inputR - inputL != 0);
