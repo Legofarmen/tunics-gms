@@ -2,8 +2,6 @@ use crate::core::feature::Command;
 use bitvec::bitvec;
 use bitvec::vec::BitVec;
 use lazy_static::lazy_static;
-use rand::seq::SliceRandom;
-use rand::Rng;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
@@ -37,9 +35,9 @@ where
             incoming: HashMap::new(),
         }
     }
-    pub fn step(&mut self, action: Command<E, T>) -> Index {
+    pub fn step(&mut self, step: Command<E, T>) -> Index {
         let i = self.steps.len();
-        self.steps.push(action);
+        self.steps.push(step);
         Index(i)
     }
     pub fn arc(&mut self, source: Index, dest: Index) {
@@ -143,23 +141,22 @@ where
     }
 }
 
-pub struct BuildSequence<'a, E, T, R>
+pub struct BuildSequence<'a, E, T, F>
 where
     E: Debug,
-    R: Rng,
+    F: FnMut(&[Index]) -> Index,
     T: Copy,
 {
-    rng: &'a mut R,
+    traversal_selector: F,
     build_plan: &'a BuildPlan<E, T>,
-    weights: HashMap<Index, usize>,
     open: Vec<Index>,
     closed: HashSet<Index>,
 }
 
-impl<'a, E, T, R> Iterator for BuildSequence<'a, E, T, R>
+impl<'a, E, T, F> Iterator for BuildSequence<'a, E, T, F>
 where
     E: Clone + Debug,
-    R: Rng,
+    F: FnMut(&[Index]) -> Index,
     T: Copy,
 {
     type Item = Command<E, T>;
@@ -170,17 +167,14 @@ where
         }
 
         let BuildSequence {
-            weights,
+            traversal_selector,
             open,
-            rng,
             closed,
             build_plan,
             ..
         } = self;
 
-        let index = *open
-            .choose_weighted(rng, |index| weights.get(index).unwrap())
-            .unwrap();
+        let index = traversal_selector(open);
         open.retain(|&x| x != index);
         closed.insert(index);
         open.extend(build_plan.incoming(index).iter().cloned().filter(|&src| {
@@ -199,9 +193,9 @@ where
     E: Debug + Eq,
     T: Copy + Eq,
 {
-    pub fn build_sequence<'a, R>(&'a self, rng: &'a mut R) -> BuildSequence<'a, E, T, R>
+    pub fn build_sequence<'a, F>(&'a self, traversal_selector: F) -> BuildSequence<'a, E, T, F>
     where
-        R: Rng,
+        F: FnMut(&[Index]) -> Index,
     {
         let mut open = Vec::new();
         for index in self.indices() {
@@ -210,16 +204,15 @@ where
             }
         }
         BuildSequence {
-            rng,
             build_plan: self,
-            weights: self.reachable_counts(),
+            traversal_selector,
             open,
             closed: HashSet::new(),
         }
     }
 
-    pub fn index(&self, action: Command<E, T>) -> Option<Index> {
-        self.steps.iter().position(|a| *a == action).map(Index)
+    pub fn index(&self, step: Command<E, T>) -> Option<Index> {
+        self.steps.iter().position(|a| *a == step).map(Index)
     }
 }
 

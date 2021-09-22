@@ -7,6 +7,22 @@ use rand::distributions::Distribution;
 use rand::Rng;
 use std::collections::HashSet;
 
+pub fn get_traversal_selector<R>(
+    mut rng: R,
+    build_plan: &BuildPlan,
+) -> impl FnMut(&[build::Index]) -> build::Index
+where
+    R: Rng,
+{
+    use rand::seq::SliceRandom;
+    let weights = build_plan.reachable_counts();
+    move |open: &[build::Index]| {
+        *open
+            .choose_weighted(&mut rng, |index| weights.get(index).unwrap())
+            .unwrap()
+    }
+}
+
 type FeaturePlan = feature::FeaturePlan<Feature>;
 type BuildPlan = build::BuildPlan<Feature, HideSmallChests>;
 
