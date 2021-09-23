@@ -69,8 +69,8 @@
   ],
   "nineSlice": null,
   "parent": {
-    "name": "UI",
-    "path": "folders/Sprites/UI.yy",
+    "name": "Meta",
+    "path": "folders/Sprites/Meta.yy",
   },
   "resourceVersion": "1.0",
   "name": "sSolid",

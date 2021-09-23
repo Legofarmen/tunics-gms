@@ -6,7 +6,7 @@
     "path": "folders/Scripts/Functions.yy",
   },
   "resourceVersion": "1.0",
-  "name": "lang_english",
+  "name": "tile_meeting",
   "tags": [],
   "resourceType": "GMScript",
 }

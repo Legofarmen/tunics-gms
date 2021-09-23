@@ -13,12 +13,5 @@ if(inputAtk){
 	localFrame = 0;
 	audio_play_sound(sndSwing,0,0);
 	}
-#region Colision Lite
-if(!place_meeting(x+knockX,y,oSolid)){
-	x+=knockX;
-	}
-if(!place_meeting(x,y+knockY,oSolid)){
-	y+=knockY;
-	}
-#endregion
+PlayerTileCollideLite();
 }

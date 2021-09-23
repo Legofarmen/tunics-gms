@@ -2,11 +2,11 @@
   "isDnD": false,
   "isCompatibility": false,
   "parent": {
-    "name": "Functions",
-    "path": "folders/Scripts/Functions.yy",
+    "name": "Player",
+    "path": "folders/Scripts/Player.yy",
   },
   "resourceVersion": "1.0",
-  "name": "lang_english",
+  "name": "PlayerSolidCollide",
   "tags": [],
   "resourceType": "GMScript",
 }
