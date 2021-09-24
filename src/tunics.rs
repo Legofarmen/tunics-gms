@@ -1,30 +1,11 @@
 use crate::core::build;
 use crate::core::feature;
 use crate::core::feature::Command;
-use crate::core::feature::Transform;
-use rand::distributions::weighted::WeightedIndex;
-use rand::distributions::Distribution;
+use crate::core::feature::FeaturePlan;
 use rand::Rng;
 use std::collections::HashSet;
 
-pub fn get_traversal_selector<R>(
-    mut rng: R,
-    build_plan: &BuildPlan,
-) -> impl FnMut(&[build::Index]) -> build::Index
-where
-    R: Rng,
-{
-    use rand::seq::SliceRandom;
-    let weights = build_plan.reachable_counts();
-    move |open: &[build::Index]| {
-        *open
-            .choose_weighted(&mut rng, |index| weights.get(index).unwrap())
-            .unwrap()
-    }
-}
-
-type FeaturePlan = feature::FeaturePlan<Feature>;
-type BuildPlan = build::BuildPlan<Feature, HideSmallChests>;
+type BuildPlan = build::BuildPlan<CommandFeature>;
 
 const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
@@ -39,33 +20,44 @@ pub struct Config {
 impl From<Config> for BuildPlan {
     fn from(config: Config) -> BuildPlan {
         let mut build_plan = BuildPlan::new();
-        let entrance = build_plan.step(Command::PrependGrouped(Feature::Entrance));
+        let entrance = build_plan.step(Command::PrependGrouped(CommandFeature::Feature(
+            Feature::Entrance,
+        )));
 
         for _ in 0..config.num_cul_de_sacs {
-            let cul_de_sac = build_plan.step(Command::New(Feature::CulDeSac));
+            let cul_de_sac =
+                build_plan.step(Command::New(CommandFeature::Feature(Feature::CulDeSac)));
             build_plan.arc(entrance, cul_de_sac);
         }
 
         for _ in 0..config.num_fairies {
-            let fairy = build_plan.step(Command::New(Feature::Fairy));
+            let fairy = build_plan.step(Command::New(CommandFeature::Feature(Feature::Fairy)));
             build_plan.arc(entrance, fairy);
         }
 
-        let boss = build_plan.step(Command::New(Feature::Boss));
-        let big_key = build_plan.step(Command::New(Feature::SmallChest(Treasure::BigKey)));
+        let boss = build_plan.step(Command::New(CommandFeature::Feature(Feature::Boss)));
+        let big_key = build_plan.step(Command::New(CommandFeature::Feature(Feature::SmallChest(
+            Treasure::BigKey,
+        ))));
         build_plan.arc(big_key, boss);
 
-        let hide_chests = build_plan.step(Command::TransformEach(HideSmallChests));
-        let compass = build_plan.step(Command::New(Feature::SmallChest(Treasure::Compass)));
+        let hide_chests = build_plan.step(Command::PrependEach(CommandFeature::HideSmallChests));
+        let compass = build_plan.step(Command::New(CommandFeature::Feature(Feature::SmallChest(
+            Treasure::Compass,
+        ))));
         build_plan.arc(hide_chests, boss);
         build_plan.arc(compass, hide_chests);
         build_plan.arc(entrance, compass);
 
         for treasure in &config.treasures {
-            let big_chest = build_plan.step(Command::New(Feature::BigChest(*treasure)));
+            let big_chest = build_plan.step(Command::New(CommandFeature::Feature(
+                Feature::BigChest(*treasure),
+            )));
             build_plan.arc(big_key, big_chest);
             for obstacle in treasure.get_obstacles() {
-                let obstacle = build_plan.step(Command::PrependEach(Feature::Obstacle(*obstacle)));
+                let obstacle = build_plan.step(Command::PrependEach(CommandFeature::Feature(
+                    Feature::Obstacle(*obstacle),
+                )));
                 build_plan.arc(big_chest, obstacle);
                 build_plan.arc(obstacle, boss);
             }
@@ -73,7 +65,9 @@ impl From<Config> for BuildPlan {
 
         let mut last_locked_door = None;
         for i in 0..config.num_small_keys {
-            let locked_door = build_plan.step(Command::PrependAny(Feature::SmallKeyDoor));
+            let locked_door = build_plan.step(Command::PrependOne(CommandFeature::Feature(
+                Feature::SmallKeyDoor,
+            )));
             if let Some(last_locked_door) = last_locked_door {
                 build_plan.arc(locked_door, last_locked_door);
             } else {
@@ -82,8 +76,9 @@ impl From<Config> for BuildPlan {
             if i == config.num_small_keys - 1 {
                 let mut last_small_key = None;
                 for j in 0..config.num_small_keys {
-                    let small_key =
-                        build_plan.step(Command::New(Feature::SmallChest(Treasure::SmallKey)));
+                    let small_key = build_plan.step(Command::New(CommandFeature::Feature(
+                        Feature::SmallChest(Treasure::SmallKey),
+                    )));
                     if let Some(last_small_key) = last_small_key {
                         build_plan.arc(small_key, last_small_key);
                     } else {
@@ -101,13 +96,15 @@ impl From<Config> for BuildPlan {
             build_plan.arc(entrance, big_key);
         }
 
-        let map = build_plan.step(Command::New(Feature::SmallChest(Treasure::Map)));
-        if let Some(weak_wall) =
-            build_plan.index(Command::PrependEach(Feature::Obstacle(Obstacle::WeakWall)))
-        {
+        let map = build_plan.step(Command::New(CommandFeature::Feature(Feature::SmallChest(
+            Treasure::Map,
+        ))));
+        if let Some(weak_wall) = build_plan.index(Command::PrependEach(CommandFeature::Feature(
+            Feature::Obstacle(Obstacle::WeakWall),
+        ))) {
             let very_weak_wall = build_plan
-                .index(Command::PrependEach(Feature::Obstacle(
-                    Obstacle::VeryWeakWall,
+                .index(Command::PrependEach(CommandFeature::Feature(
+                    Feature::Obstacle(Obstacle::VeryWeakWall),
                 )))
                 .unwrap();
             build_plan.arc(very_weak_wall, weak_wall);
@@ -169,44 +166,64 @@ pub enum Feature {
     Entrance,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct HideSmallChests;
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+pub enum CommandFeature {
+    Feature(Feature),
+    HideSmallChests,
+}
 
-impl Transform<Feature> for HideSmallChests {
-    fn apply<R: Rng>(&self, rng: &mut R, tree: FeaturePlan) -> FeaturePlan {
-        fn visit<R: Rng>(rng: &mut R, tree: FeaturePlan, is_below: bool) -> FeaturePlan {
-            match tree {
-                FeaturePlan::Feature(Feature::SmallChest(treasure), next) if is_below => {
-                    let next = visit(rng, *next, true);
-                    if rng.gen_bool(0.5) {
-                        next.prepended(Feature::HiddenSmallChest(treasure))
-                    } else {
-                        next.prepended(Feature::SmallChest(treasure))
-                    }
-                }
-                FeaturePlan::Feature(feature, next) => {
-                    visit(rng, *next, is_below).prepended(feature)
-                }
-                FeaturePlan::Branch(nodes) => FeaturePlan::Branch(
-                    nodes
-                        .into_iter()
-                        .map(|step| visit(rng, step, is_below))
-                        .collect(),
-                ),
-            }
-        }
-        visit(rng, tree, false)
+impl feature::Feature for CommandFeature {
+    type Room = Room;
+    fn apply(self, _room: Room) -> Result<Room, (Self, Room)> {
+        panic!();
     }
 }
 
+pub fn hide_chests<R: Rng>(
+    rng: &mut R,
+    feature_plan: FeaturePlan<CommandFeature>,
+) -> FeaturePlan<Feature> {
+    fn visit<R: Rng>(
+        rng: &mut R,
+        tree: FeaturePlan<CommandFeature>,
+        is_below: bool,
+    ) -> FeaturePlan<Feature> {
+        match tree {
+            FeaturePlan::Feature(CommandFeature::Feature(Feature::SmallChest(treasure)), next)
+                if is_below =>
+            {
+                let next = visit(rng, *next, true);
+                if rng.gen_bool(0.5) {
+                    next.prepended(Feature::HiddenSmallChest(treasure))
+                } else {
+                    next.prepended(Feature::SmallChest(treasure))
+                }
+            }
+            FeaturePlan::Feature(CommandFeature::Feature(feature), next) => {
+                visit(rng, *next, is_below).prepended(feature)
+            }
+            FeaturePlan::Branch(nodes) => FeaturePlan::Branch(
+                nodes
+                    .into_iter()
+                    .map(|step| visit(rng, step, is_below))
+                    .collect(),
+            ),
+            FeaturePlan::Feature(CommandFeature::HideSmallChests, next) => visit(rng, *next, true),
+        }
+    }
+    visit(rng, feature_plan, false)
+}
+
 pub fn calc_join_weight(
-    tree: &FeaturePlan,
+    tree: &FeaturePlan<CommandFeature>,
     global_max_depth: usize,
-) -> Box<dyn Fn(&FeaturePlan) -> usize> {
-    fn big_key_pred(feature: &Feature) -> bool {
+) -> Box<dyn Fn(&FeaturePlan<CommandFeature>) -> usize> {
+    fn big_key_pred(feature: &CommandFeature) -> bool {
         matches!(
             feature,
-            Feature::Boss | Feature::BigChest(_) | Feature::SmallChest(Treasure::BigKey)
+            CommandFeature::Feature(
+                Feature::Boss | Feature::BigChest(_) | Feature::SmallChest(Treasure::BigKey)
+            )
         )
     }
     let depth = tree.find_feature_depth(&big_key_pred);
@@ -230,27 +247,6 @@ pub fn calc_join_weight(
                 + BIG_KEY_DEPTH_WEIGHT * (global_max_depth - big_key_depth)
                 + 1
         })
-    }
-}
-
-pub fn compact<R>(rng: &mut R, max_width: usize, tree: FeaturePlan) -> FeaturePlan
-where
-    R: Rng,
-{
-    match tree {
-        FeaturePlan::Branch(mut nodes) => {
-            while nodes.len() > max_width {
-                let head = nodes.remove(rng.gen_range(0..nodes.len()));
-                let max_depth = nodes.iter().fold(0, |acc: usize, step: &FeaturePlan| {
-                    acc.max(step.max_depth())
-                });
-                let calc_join_weight = calc_join_weight(&head, max_depth);
-                let dist = WeightedIndex::new(nodes.iter().map(calc_join_weight)).unwrap();
-                nodes.get_mut(dist.sample(rng)).unwrap().join(head);
-            }
-            FeaturePlan::Branch(nodes)
-        }
-        _ => tree,
     }
 }
 
@@ -392,6 +388,58 @@ impl feature::Feature for Feature {
                 Ok(room)
             }
             _ => Err((self, room)),
+        }
+    }
+}
+
+pub fn get_traversal_selector<R>(
+    mut rng: R,
+    build_plan: &BuildPlan,
+) -> impl FnMut(&[build::Index]) -> build::Index
+where
+    R: Rng,
+{
+    use rand::seq::SliceRandom;
+    let weights = build_plan.reachable_counts();
+    move |open: &[build::Index]| {
+        *open
+            .choose_weighted(&mut rng, |index| weights.get(index).unwrap())
+            .unwrap()
+    }
+}
+pub fn get_prepend_selector<R>(mut rng: R) -> impl FnMut(&[FeaturePlan<CommandFeature>]) -> usize
+where
+    R: Rng,
+{
+    move |nodes: &[FeaturePlan<CommandFeature>]| rng.gen_range(0..nodes.len())
+}
+
+pub fn get_join_selector<'a, R>(
+    mut rng: R,
+) -> impl FnMut(&[FeaturePlan<CommandFeature>]) -> Option<(usize, usize)>
+where
+    R: 'a + Rng,
+{
+    use rand::distributions::Distribution;
+    use rand::distributions::WeightedIndex;
+
+    move |nodes: &[FeaturePlan<CommandFeature>]| {
+        let max_width = 3;
+        if nodes.len() > max_width {
+            let i = rng.gen_range(0..nodes.len());
+            let max_depth = nodes
+                .iter()
+                .enumerate()
+                .filter_map(|(j, n)| if j == i { None } else { Some(n) })
+                .fold(0, |acc: usize, step: &FeaturePlan<_>| {
+                    acc.max(step.max_depth())
+                });
+            let calc_join_weight = calc_join_weight(&nodes[i], max_depth);
+            let dist = WeightedIndex::new(nodes.iter().map(calc_join_weight)).unwrap();
+            let j = dist.sample(&mut rng);
+            Some((i, j))
+        } else {
+            None
         }
     }
 }

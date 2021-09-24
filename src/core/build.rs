@@ -13,20 +13,18 @@ lazy_static! {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Index(usize);
 
-pub struct BuildPlan<E, T>
+pub struct BuildPlan<E>
 where
     E: Debug,
-    T: Copy,
 {
-    steps: Vec<Command<E, T>>,
+    steps: Vec<Command<E>>,
     outgoing: HashMap<Index, HashSet<Index>>, // (Source, Target)
     incoming: HashMap<Index, HashSet<Index>>, // (Target, Source)
 }
 
-impl<E, T> BuildPlan<E, T>
+impl<E> BuildPlan<E>
 where
     E: Debug,
-    T: Copy,
 {
     pub fn new() -> Self {
         BuildPlan {
@@ -35,7 +33,7 @@ where
             incoming: HashMap::new(),
         }
     }
-    pub fn step(&mut self, step: Command<E, T>) -> Index {
+    pub fn step(&mut self, step: Command<E>) -> Index {
         let i = self.steps.len();
         self.steps.push(step);
         Index(i)
@@ -94,7 +92,7 @@ where
     pub fn indices(&self) -> impl Iterator<Item = Index> {
         (0..self.steps.len()).map(Index)
     }
-    pub fn steps(&self) -> &[Command<E, T>] {
+    pub fn steps(&self) -> &[Command<E>] {
         self.steps.as_slice()
     }
     pub fn outgoing(&self, source: Index) -> &HashSet<Index> {
@@ -121,47 +119,43 @@ where
     }
 }
 
-impl<E, T> BuildPlan<E, T>
+impl<E> BuildPlan<E>
 where
     E: Clone + Debug,
-    T: Copy,
 {
-    pub fn get(&self, index: &Index) -> Option<Command<E, T>> {
+    pub fn get(&self, index: &Index) -> Option<Command<E>> {
         self.steps.get(index.0).cloned()
     }
 }
 
-impl<E, T> Default for BuildPlan<E, T>
+impl<E> Default for BuildPlan<E>
 where
     E: Debug,
-    T: Copy,
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-pub struct BuildSequence<'a, E, T, F>
+pub struct BuildSequence<'a, E, F>
 where
     E: Debug,
     F: FnMut(&[Index]) -> Index,
-    T: Copy,
 {
     traversal_selector: F,
-    build_plan: &'a BuildPlan<E, T>,
+    build_plan: &'a BuildPlan<E>,
     open: Vec<Index>,
     closed: HashSet<Index>,
 }
 
-impl<'a, E, T, F> Iterator for BuildSequence<'a, E, T, F>
+impl<'a, E, F> Iterator for BuildSequence<'a, E, F>
 where
     E: Clone + Debug,
     F: FnMut(&[Index]) -> Index,
-    T: Copy,
 {
-    type Item = Command<E, T>;
+    type Item = Command<E>;
 
-    fn next(&mut self) -> Option<Command<E, T>> {
+    fn next(&mut self) -> Option<Command<E>> {
         if self.open.is_empty() {
             return None;
         }
@@ -188,12 +182,11 @@ where
     }
 }
 
-impl<E, T> BuildPlan<E, T>
+impl<E> BuildPlan<E>
 where
     E: Debug + Eq,
-    T: Copy + Eq,
 {
-    pub fn build_sequence<'a, F>(&'a self, traversal_selector: F) -> BuildSequence<'a, E, T, F>
+    pub fn build_sequence<'a, F>(&'a self, traversal_selector: F) -> BuildSequence<'a, E, F>
     where
         F: FnMut(&[Index]) -> Index,
     {
@@ -211,12 +204,12 @@ where
         }
     }
 
-    pub fn index(&self, step: Command<E, T>) -> Option<Index> {
+    pub fn index(&self, step: Command<E>) -> Option<Index> {
         self.steps.iter().position(|a| *a == step).map(Index)
     }
 }
 
-impl<A: Debug, T: Copy + Debug> BuildPlan<A, T> {
+impl<A: Debug> BuildPlan<A> {
     pub fn show(&self) {
         for index in self.sorted() {
             let mut outgoing: Vec<_> = self

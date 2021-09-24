@@ -27,8 +27,14 @@ impl<T> Check<T> for T {
 fn main() {
     use crate::core::build::BuildPlan;
     use crate::core::feature::FeaturePlan;
-    use crate::tunics::compact;
+    //use crate::tunics::compact;
+    // let feature_plan = step.apply(&mut rng, feature_plan);
+    // compact(&mut rng, 3, feature_plan)
+    use crate::tunics::get_join_selector;
+    use crate::tunics::get_prepend_selector;
     use crate::tunics::get_traversal_selector;
+    use crate::tunics::hide_chests;
+    use crate::tunics::CommandFeature;
     use crate::tunics::Config;
     use crate::tunics::Treasure;
     use rand::rngs::StdRng;
@@ -43,10 +49,13 @@ fn main() {
         .unwrap_or_else(|| ThreadRng::default().gen());
     args.next()
         .and_then::<String, _>(|_| panic!("too many argument"));
-
     println!("{}", seed);
+
     let mut rng = StdRng::seed_from_u64(seed);
+    let rng1 = split_rng(&mut rng);
     let rng2 = split_rng(&mut rng);
+    let rng3 = split_rng(&mut rng);
+    let mut rng4 = split_rng(&mut rng);
 
     let build_plan = BuildPlan::from(Config {
         num_fairies: 1,
@@ -58,15 +67,17 @@ fn main() {
     //.check(|build_plan| build_plan.show())
     ;
 
-    let traversal_selector = get_traversal_selector(rng2, &build_plan);
-    let _ = build_plan
+    let traversal_selector = get_traversal_selector(rng1, &build_plan);
+    let prepend_selector = get_prepend_selector(rng2);
+    let join_selector = get_join_selector(rng3);
+    let build_sequence = build_plan
         .build_sequence(traversal_selector)
         //.inspect(|step| println!("{:?}", step))
-        .fold(FeaturePlan::default(), |feature_plan, step| {
-            let feature_plan = step.apply(&mut rng, feature_plan);
-            compact(&mut rng, 3, feature_plan)
-        })
+        ;
+    let feature_plan: FeaturePlan<CommandFeature> = FeaturePlan::<CommandFeature>::from_steps(join_selector, prepend_selector, build_sequence)
         //.check(|feature_plan| feature_plan.show())
+        ;
+    hide_chests(&mut rng4, feature_plan)
         .into_room()
         .check(|room| room.show());
 }
