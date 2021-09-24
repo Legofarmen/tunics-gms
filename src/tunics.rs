@@ -1,11 +1,10 @@
 use crate::core::build;
+use crate::core::build::BuildPlan;
 use crate::core::feature;
 use crate::core::feature::FeaturePlan;
 use crate::core::feature::Op;
 use rand::Rng;
 use std::collections::HashSet;
-
-type BuildPlan = build::BuildPlan<AugFeature>;
 
 const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
@@ -18,8 +17,8 @@ pub struct Config {
     pub treasures: HashSet<Treasure>,
 }
 
-impl From<Config> for BuildPlan {
-    fn from(config: Config) -> BuildPlan {
+impl From<Config> for BuildPlan<AugFeature> {
+    fn from(config: Config) -> BuildPlan<AugFeature> {
         let mut build_plan = BuildPlan::new();
         let entrance =
             build_plan.vertex(Op::PrependGrouped(AugFeature::Feature(Feature::Entrance)));
@@ -150,7 +149,7 @@ impl Treasure {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Feature {
     Boss,
     CulDeSac,
@@ -163,7 +162,7 @@ pub enum Feature {
     Entrance,
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AugFeature {
     Feature(Feature),
     HideSmallChests,
@@ -305,6 +304,7 @@ impl Room {
 
 impl feature::Room for Room {
     type Feature = Feature;
+
     fn add_exits<I>(mut self, exits: I) -> Self
     where
         I: IntoIterator<Item = Self>,
@@ -312,6 +312,7 @@ impl feature::Room for Room {
         self.exits.extend(exits);
         self
     }
+
     fn apply(mut self, feature: Feature) -> Result<Self, (Feature, Self)> {
         match feature {
             Feature::Boss
@@ -380,7 +381,7 @@ impl feature::Room for Room {
 
 pub fn get_traversal_selector<R>(
     mut rng: R,
-    build_plan: &BuildPlan,
+    build_plan: &BuildPlan<AugFeature>,
 ) -> impl FnMut(&[build::Index]) -> build::Index
 where
     R: Rng,
