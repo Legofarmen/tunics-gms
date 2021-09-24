@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-use std::hash::Hash;
 
 #[derive(Clone, Debug)]
 pub enum FeaturePlan<F> {
@@ -104,12 +103,6 @@ where
     pub fn prepend(&mut self, feature: F) {
         *self = FeaturePlan::Feature(feature, Box::new(self.clone()));
     }
-
-    pub fn skip_feature(&mut self) {
-        if let FeaturePlan::Feature(_, next) = self {
-            *self = (**next).clone();
-        }
-    }
 }
 
 impl<F> FeaturePlan<F>
@@ -143,7 +136,7 @@ where
 
 impl<F> FeaturePlan<F>
 where
-    F: Clone + Debug + Eq + Hash,
+    F: Clone + Debug,
 {
     pub fn from_steps<J, P, I>(
         mut join_selector: J,
@@ -217,7 +210,7 @@ where
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Command<F>
 where
     F: Debug,

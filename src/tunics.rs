@@ -208,7 +208,7 @@ pub fn hide_chests<R: Rng>(
     visit(rng, feature_plan, false)
 }
 
-pub fn calc_join_weight(
+fn calc_join_weight(
     tree: &FeaturePlan<CommandFeature>,
     global_max_depth: usize,
 ) -> Box<dyn Fn(&FeaturePlan<CommandFeature>) -> usize> {
@@ -382,8 +382,6 @@ impl feature::Room for Room {
     }
 }
 
-impl Feature {}
-
 pub fn get_traversal_selector<R>(
     mut rng: R,
     build_plan: &BuildPlan,
@@ -399,6 +397,7 @@ where
             .unwrap()
     }
 }
+
 pub fn get_prepend_selector<R>(mut rng: R) -> impl FnMut(&[FeaturePlan<CommandFeature>]) -> usize
 where
     R: Rng,
