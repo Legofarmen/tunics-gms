@@ -82,21 +82,21 @@ impl<F> FeaturePlan<F>
 where
     F: Clone,
 {
-    pub fn join(&mut self, other: Self) {
+    pub fn join(self, other: Self) -> Self {
         match (self, other) {
-            (FeaturePlan::Branch(ref mut u), FeaturePlan::Branch(mut v)) => {
+            (FeaturePlan::Branch(mut u), FeaturePlan::Branch(mut v)) => {
                 u.append(&mut v);
+                FeaturePlan::Branch(u)
             }
-            (FeaturePlan::Branch(ref mut u), feature) => {
+            (FeaturePlan::Branch(mut u), feature) => {
                 u.push(feature);
+                FeaturePlan::Branch(u)
             }
             (this, FeaturePlan::Branch(mut u)) => {
-                u.push((*this).clone());
-                *this = FeaturePlan::Branch(u);
+                u.push(this.clone());
+                FeaturePlan::Branch(u)
             }
-            (this, f) => {
-                *this = FeaturePlan::Branch(vec![(*this).clone(), f]);
-            }
+            (this, f) => FeaturePlan::Branch(vec![this.clone(), f]),
         }
     }
 
@@ -164,15 +164,12 @@ where
                     if nodes.len() > 2 {
                         if let Some((i, j)) = join_selector(&nodes) {
                             assert!(i != j);
-                            let mut join_nodes = Vec::new();
-                            if i < j {
-                                join_nodes.push(nodes.swap_remove(j));
-                                join_nodes.push(nodes.swap_remove(i));
+                            let (m, n) = if i < j {
+                                (nodes.swap_remove(j), nodes.swap_remove(i))
                             } else {
-                                join_nodes.push(nodes.swap_remove(i));
-                                join_nodes.push(nodes.swap_remove(j));
-                            }
-                            nodes.push(FeaturePlan::Branch(join_nodes));
+                                (nodes.swap_remove(i), nodes.swap_remove(j))
+                            };
+                            nodes.push(m.join(n));
                         }
                     }
                     FeaturePlan::Branch(nodes)
