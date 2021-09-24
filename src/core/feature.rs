@@ -179,30 +179,27 @@ where
             feature_plan = match step {
                 Command::New(feature) => {
                     let feature = FeaturePlan::new_feature(feature);
-                    let feature_plan = match feature_plan {
+                    let mut nodes = match feature_plan {
                         FeaturePlan::Branch(mut nodes) => {
                             nodes.push(feature);
-                            FeaturePlan::Branch(nodes)
+                            nodes
                         }
-                        _ => FeaturePlan::Branch(vec![feature_plan, feature]),
+                        _ => vec![feature_plan, feature],
                     };
-                    match feature_plan {
-                        FeaturePlan::Branch(mut nodes) if nodes.len() >= 2 => {
-                            if let Some((i, j)) = join_selector(&nodes) {
-                                let mut join_nodes = Vec::new();
-                                if i < j {
-                                    join_nodes.push(nodes.swap_remove(j));
-                                    join_nodes.push(nodes.swap_remove(i));
-                                } else {
-                                    join_nodes.push(nodes.swap_remove(i));
-                                    join_nodes.push(nodes.swap_remove(j));
-                                }
-                                nodes.push(FeaturePlan::Branch(join_nodes));
+                    if nodes.len() > 2 {
+                        if let Some((i, j)) = join_selector(&nodes) {
+                            let mut join_nodes = Vec::new();
+                            if i < j {
+                                join_nodes.push(nodes.swap_remove(j));
+                                join_nodes.push(nodes.swap_remove(i));
+                            } else {
+                                join_nodes.push(nodes.swap_remove(i));
+                                join_nodes.push(nodes.swap_remove(j));
                             }
-                            FeaturePlan::Branch(nodes)
+                            nodes.push(FeaturePlan::Branch(join_nodes));
                         }
-                        feature_plan => feature_plan,
                     }
+                    FeaturePlan::Branch(nodes)
                 }
                 Command::PrependOne(feature) => match feature_plan {
                     FeaturePlan::Branch(mut nodes) => {
