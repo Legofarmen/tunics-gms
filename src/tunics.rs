@@ -1,5 +1,5 @@
-use crate::core::build;
 use crate::core::build::BuildPlan;
+use crate::core::build::Index;
 use crate::core::feature;
 use crate::core::feature::FeaturePlan;
 use crate::core::feature::Op;
@@ -346,13 +346,13 @@ impl feature::Room for Room {
 pub fn get_traversal_selector<R>(
     mut rng: R,
     build_plan: &BuildPlan<AugFeature>,
-) -> impl FnMut(&[build::Index]) -> build::Index
+) -> impl FnMut(&[Index]) -> Index
 where
     R: Rng,
 {
     use rand::seq::SliceRandom;
     let weights = build_plan.reachable_counts();
-    move |open: &[build::Index]| {
+    move |open: &[Index]| {
         *open
             .choose_weighted(&mut rng, |index| weights.get(index).unwrap())
             .unwrap()

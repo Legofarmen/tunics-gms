@@ -27,9 +27,7 @@ impl<T> Check<T> for T {
 fn main() {
     use crate::core::build::BuildPlan;
     use crate::core::feature::FeaturePlan;
-    //use crate::tunics::compact;
-    // let feature_plan = step.apply(&mut rng, feature_plan);
-    // compact(&mut rng, 3, feature_plan)
+    use crate::core::feature::Room as _;
     use crate::tunics::get_join_selector;
     use crate::tunics::get_prepend_selector;
     use crate::tunics::get_traversal_selector;
@@ -77,7 +75,5 @@ fn main() {
     let feature_plan = FeaturePlan::from_steps(join_selector, prepend_selector, build_sequence)
         //.check(|feature_plan| feature_plan.show())
         ;
-    hide_chests(&mut rng4, feature_plan)
-        .into_room::<Room>()
-        .check(|room| room.show());
+    Room::from_feature_plan(hide_chests(&mut rng4, feature_plan)).check(|room| room.show());
 }

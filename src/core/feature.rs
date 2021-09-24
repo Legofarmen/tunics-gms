@@ -50,32 +50,6 @@ impl<F> FeaturePlan<F> {
                 .fold(1, |acc, node| acc.max(node.max_depth() + 1)),
         }
     }
-
-    pub fn into_room<R>(self) -> R
-    where
-        R: Room<Feature = F>,
-    {
-        match self {
-            FeaturePlan::Feature(feature, child) => {
-                let (Ok(room) | Err(room)) =
-                    child
-                        .into_room::<R>()
-                        .apply(feature)
-                        .map_err(|(feature, room)| {
-                            R::default()
-                                .add_exits(vec![room])
-                                .apply(feature)
-                                .ok()
-                                .unwrap()
-                        });
-                room
-            }
-            FeaturePlan::Branch(nodes) => {
-                let nodes: Vec<_> = nodes.into_iter().map(|node| node.into_room()).collect();
-                R::default().add_exits(nodes)
-            }
-        }
-    }
 }
 
 impl<F> FeaturePlan<F>
@@ -224,6 +198,27 @@ pub trait Room: Default {
     where
         I: IntoIterator<Item = Self>;
     fn apply(self, feature: Self::Feature) -> Result<Self, (Self::Feature, Self)>;
+
+    fn from_feature_plan(feature_plan: FeaturePlan<Self::Feature>) -> Self {
+        match feature_plan {
+            FeaturePlan::Feature(feature, child) => {
+                let (Ok(room) | Err(room)) = Self::from_feature_plan(*child)
+                    .apply(feature)
+                    .map_err(|(feature, room)| {
+                        Self::default()
+                            .add_exits(vec![room])
+                            .apply(feature)
+                            .ok()
+                            .unwrap()
+                    });
+                room
+            }
+            FeaturePlan::Branch(nodes) => {
+                let nodes: Vec<_> = nodes.into_iter().map(Self::from_feature_plan).collect();
+                Self::default().add_exits(nodes)
+            }
+        }
+    }
 }
 
 #[cfg(test)]
