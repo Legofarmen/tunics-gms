@@ -8,12 +8,15 @@ inputD = keyboard_check(global.key_down);
 inputAtk = keyboard_check_pressed(global.key_attack);
 inputZtarget = keyboard_check_pressed(global.key_target);
 inputHoldInteract = keyboard_check(global.key_interact);
-
+inputPressInteract = keyboard_check_pressed(global.key_interact);
 inputMagnitude = (inputD - inputU != 0) || (inputR - inputL != 0);
 inputDirection = point_direction(0,0,inputR-inputL,inputD-inputU);
 
 //State Machine
 switch(state){
-	case "free": PlayerStateFree(); break;
-	case "atk": PlayerStateAtk(); break;
+	case "free":	PlayerStateFree(); break;
+	case "atk":		PlayerStateAtk(); break;
+	case "lift":	PlayerStateLift(); break;
+	case "carry":	PlayerStateCarry(); break;
+	case "throw":	PlayerStateThrow(); break;
 }

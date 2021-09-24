@@ -17,7 +17,5 @@ state = "free";
 life = 3;
 max_life = 3;
 ztarget = noone;
+lift_id = noone;
 socket = 0;
-
-layer_id = layer_get_id("collision");
-tilemap = layer_tilemap_get_id(layer_id);

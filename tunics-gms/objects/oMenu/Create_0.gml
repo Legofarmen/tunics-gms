@@ -86,17 +86,11 @@ ds_menu_controls = create_menu_page(
 	["TARGET (Z)",menu_type.input, "key_target", ord("D")],
 	["< BACK",	menu_type.page_transfer,	menu_page.options]
 );
-
-ds_menu_pause =	create_menu_page(
-	["RESUME",	menu_type.page_transfer,	menu_resume_game],
-	["OPTIONS",	menu_type.page_transfer,	menu_page.options],
-	["EXIT",	menu_type.script_run,		menu_exit] //Exit finishes the room and goes back to mainmenu.
-);
 #endregion
 
 page = 0;
 menu_pages = [ds_menu_main,ds_menu_gametype,ds_menu_multiplayer,ds_menu_options,ds_menu_audio,
-			  ds_menu_graphics,ds_menu_language,ds_menu_controls,ds_menu_pause];
+			  ds_menu_graphics,ds_menu_language,ds_menu_controls];
 			  
 var i = 0, array_len = array_length(menu_pages);
 repeat(array_len){
