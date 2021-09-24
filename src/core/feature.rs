@@ -51,6 +51,32 @@ impl<F> FeaturePlan<F> {
                 .fold(1, |acc, node| acc.max(node.max_depth() + 1)),
         }
     }
+
+    pub fn into_room<R>(self) -> R
+    where
+        R: Room<Feature = F>,
+    {
+        match self {
+            FeaturePlan::Feature(feature, child) => {
+                let (Ok(room) | Err(room)) =
+                    child
+                        .into_room::<R>()
+                        .apply(feature)
+                        .map_err(|(feature, room)| {
+                            R::default()
+                                .add_exits(vec![room])
+                                .apply(feature)
+                                .ok()
+                                .unwrap()
+                        });
+                room
+            }
+            FeaturePlan::Branch(nodes) => {
+                let nodes: Vec<_> = nodes.into_iter().map(|node| node.into_room()).collect();
+                R::default().add_exits(nodes)
+            }
+        }
+    }
 }
 
 impl<F> FeaturePlan<F>
@@ -86,34 +112,6 @@ where
     }
 }
 
-impl<F> FeaturePlan<F> {
-    pub fn into_room<R>(self) -> R
-    where
-        R: Room<Feature = F>,
-    {
-        match self {
-            FeaturePlan::Feature(feature, child) => {
-                let (Ok(room) | Err(room)) =
-                    child
-                        .into_room::<R>()
-                        .apply(feature)
-                        .map_err(|(feature, room)| {
-                            R::default()
-                                .add_exits(vec![room])
-                                .apply(feature)
-                                .ok()
-                                .unwrap()
-                        });
-                room
-            }
-            FeaturePlan::Branch(nodes) => {
-                let nodes: Vec<_> = nodes.into_iter().map(|node| node.into_room()).collect();
-                R::default().add_exits(nodes)
-            }
-        }
-    }
-}
-
 impl<F> FeaturePlan<F>
 where
     F: Debug,
@@ -141,26 +139,6 @@ where
         }
         visit(self, true, 0);
     }
-}
-
-impl<F> Default for FeaturePlan<F>
-where
-    F: Debug,
-{
-    fn default() -> Self {
-        FeaturePlan::new()
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Command<F>
-where
-    F: Debug,
-{
-    New(F),
-    PrependOne(F),
-    PrependEach(F),
-    PrependGrouped(F),
 }
 
 impl<F> FeaturePlan<F>
@@ -228,6 +206,26 @@ where
         }
         feature_plan
     }
+}
+
+impl<F> Default for FeaturePlan<F>
+where
+    F: Debug,
+{
+    fn default() -> Self {
+        FeaturePlan::new()
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+pub enum Command<F>
+where
+    F: Debug,
+{
+    New(F),
+    PrependOne(F),
+    PrependEach(F),
+    PrependGrouped(F),
 }
 
 pub trait Room: Default {
