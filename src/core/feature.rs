@@ -86,25 +86,29 @@ where
     }
 }
 
-impl<F> FeaturePlan<F>
-where
-    F: Feature,
-{
-    pub fn into_room(self) -> F::Room {
+impl<F> FeaturePlan<F> {
+    pub fn into_room<R>(self) -> R
+    where
+        R: Room<Feature = F>,
+    {
         match self {
             FeaturePlan::Feature(feature, child) => {
                 let (Ok(room) | Err(room)) =
-                    feature.apply(child.into_room()).map_err(|(feature, room)| {
-                        feature
-                            .apply(F::Room::default().add_exits(vec![room]))
-                            .ok()
-                            .unwrap()
-                    });
+                    child
+                        .into_room::<R>()
+                        .apply(feature)
+                        .map_err(|(feature, room)| {
+                            R::default()
+                                .add_exits(vec![room])
+                                .apply(feature)
+                                .ok()
+                                .unwrap()
+                        });
                 room
             }
             FeaturePlan::Branch(nodes) => {
                 let nodes: Vec<_> = nodes.into_iter().map(|node| node.into_room()).collect();
-                F::Room::default().add_exits(nodes)
+                R::default().add_exits(nodes)
             }
         }
     }
@@ -141,7 +145,7 @@ where
 
 impl<F> Default for FeaturePlan<F>
 where
-    F: Feature + Debug,
+    F: Debug,
 {
     fn default() -> Self {
         FeaturePlan::new()
@@ -161,7 +165,7 @@ where
 
 impl<F> FeaturePlan<F>
 where
-    F: Debug + Eq + Feature + Hash,
+    F: Clone + Debug + Eq + Hash,
 {
     pub fn from_steps<J, P, I>(
         mut join_selector: J,
@@ -188,6 +192,7 @@ where
                     };
                     if nodes.len() > 2 {
                         if let Some((i, j)) = join_selector(&nodes) {
+                            assert!(i != j);
                             let mut join_nodes = Vec::new();
                             if i < j {
                                 join_nodes.push(nodes.swap_remove(j));
@@ -213,7 +218,7 @@ where
                     FeaturePlan::Branch(nodes) => FeaturePlan::Branch(
                         nodes
                             .into_iter()
-                            .map(|node| node.prepended(feature))
+                            .map(|node| node.prepended(feature.clone()))
                             .collect(),
                     ),
                     _ => feature_plan.prepended(feature),
@@ -225,16 +230,12 @@ where
     }
 }
 
-pub trait Feature: Copy + Debug {
-    type Room: Default + Room;
-
-    fn apply(self, room: Self::Room) -> Result<Self::Room, (Self, Self::Room)>;
-}
-
-pub trait Room: Sized {
+pub trait Room: Default {
+    type Feature;
     fn add_exits<I>(self, exits: I) -> Self
     where
         I: IntoIterator<Item = Self>;
+    fn apply(self, feature: Self::Feature) -> Result<Self, (Self::Feature, Self)>;
 }
 
 #[cfg(test)]

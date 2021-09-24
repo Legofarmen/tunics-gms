@@ -9,6 +9,7 @@ type BuildPlan = build::BuildPlan<CommandFeature>;
 
 const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
+const MAX_WIDTH: usize = 3;
 
 pub struct Config {
     pub num_small_keys: usize,
@@ -172,13 +173,6 @@ pub enum CommandFeature {
     HideSmallChests,
 }
 
-impl feature::Feature for CommandFeature {
-    type Room = Room;
-    fn apply(self, _room: Room) -> Result<Room, (Self, Room)> {
-        panic!();
-    }
-}
-
 pub fn hide_chests<R: Rng>(
     rng: &mut R,
     feature_plan: FeaturePlan<CommandFeature>,
@@ -314,6 +308,7 @@ impl Room {
 }
 
 impl feature::Room for Room {
+    type Feature = Feature;
     fn add_exits<I>(mut self, exits: I) -> Self
     where
         I: IntoIterator<Item = Self>,
@@ -321,76 +316,73 @@ impl feature::Room for Room {
         self.exits.extend(exits);
         self
     }
-}
-
-impl feature::Feature for Feature {
-    type Room = Room;
-
-    fn apply(self, mut room: Room) -> Result<Room, (Self, Room)> {
-        match self {
+    fn apply(mut self, feature: Feature) -> Result<Self, (Feature, Self)> {
+        match feature {
             Feature::Boss
-                if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
+                if self.entrance.is_none() && self.chest.is_none() && self.obstacle.is_none() =>
             {
-                room.obstacle = Some(Obstacle::Boss);
-                room.entrance = Some(Lock::BigKey);
-                Ok(room)
+                self.obstacle = Some(Obstacle::Boss);
+                self.entrance = Some(Lock::BigKey);
+                Ok(self)
             }
-            Feature::Obstacle(obstacle) if room.entrance.is_none() && room.obstacle.is_none() => {
-                room.obstacle = Some(obstacle);
-                if room.chest.is_some() {
-                    room.far_side_chest = Some(true);
+            Feature::Obstacle(obstacle) if self.entrance.is_none() && self.obstacle.is_none() => {
+                self.obstacle = Some(obstacle);
+                if self.chest.is_some() {
+                    self.far_side_chest = Some(true);
                 }
-                Ok(room)
+                Ok(self)
             }
-            Feature::SmallChest(treasure) if room.entrance.is_none() && room.chest.is_none() => {
-                room.chest = Some(treasure);
-                if room.obstacle.is_some() {
-                    room.far_side_chest = Some(false);
+            Feature::SmallChest(treasure) if self.entrance.is_none() && self.chest.is_none() => {
+                self.chest = Some(treasure);
+                if self.obstacle.is_some() {
+                    self.far_side_chest = Some(false);
                 }
-                Ok(room)
+                Ok(self)
             }
             Feature::HiddenSmallChest(treasure)
-                if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
+                if self.entrance.is_none() && self.chest.is_none() && self.obstacle.is_none() =>
             {
-                room.chest = Some(treasure);
-                room.obstacle = Some(Obstacle::Puzzle);
-                Ok(room)
+                self.chest = Some(treasure);
+                self.obstacle = Some(Obstacle::Puzzle);
+                Ok(self)
             }
             Feature::BigChest(treasure)
-                if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
+                if self.entrance.is_none() && self.chest.is_none() && self.obstacle.is_none() =>
             {
-                room.chest = Some(treasure);
-                room.obstacle = Some(Obstacle::BigChest);
-                Ok(room)
+                self.chest = Some(treasure);
+                self.obstacle = Some(Obstacle::BigChest);
+                Ok(self)
             }
-            Feature::SmallKeyDoor if room.entrance.is_none() => {
-                room.entrance = Some(Lock::SmallKey);
-                Ok(room)
+            Feature::SmallKeyDoor if self.entrance.is_none() => {
+                self.entrance = Some(Lock::SmallKey);
+                Ok(self)
             }
             Feature::Entrance
-                if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
+                if self.entrance.is_none() && self.chest.is_none() && self.obstacle.is_none() =>
             {
-                room.obstacle = Some(Obstacle::Entrance);
-                Ok(room)
+                self.obstacle = Some(Obstacle::Entrance);
+                Ok(self)
             }
             Feature::CulDeSac
-                if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
+                if self.entrance.is_none() && self.chest.is_none() && self.obstacle.is_none() =>
             {
-                room.obstacle = Some(Obstacle::CulDeSac);
-                room.chest = Some(Treasure::NoChest);
-                Ok(room)
+                self.obstacle = Some(Obstacle::CulDeSac);
+                self.chest = Some(Treasure::NoChest);
+                Ok(self)
             }
             Feature::Fairy
-                if room.entrance.is_none() && room.chest.is_none() && room.obstacle.is_none() =>
+                if self.entrance.is_none() && self.chest.is_none() && self.obstacle.is_none() =>
             {
-                room.obstacle = Some(Obstacle::Fairy);
-                room.chest = Some(Treasure::NoChest);
-                Ok(room)
+                self.obstacle = Some(Obstacle::Fairy);
+                self.chest = Some(Treasure::NoChest);
+                Ok(self)
             }
-            _ => Err((self, room)),
+            _ => Err((feature, self)),
         }
     }
 }
+
+impl Feature {}
 
 pub fn get_traversal_selector<R>(
     mut rng: R,
@@ -424,8 +416,7 @@ where
     use rand::distributions::WeightedIndex;
 
     move |nodes: &[FeaturePlan<CommandFeature>]| {
-        let max_width = 3;
-        if nodes.len() > max_width {
+        if nodes.len() > MAX_WIDTH {
             let i = rng.gen_range(0..nodes.len());
             let max_depth = nodes
                 .iter()
@@ -435,7 +426,14 @@ where
                     acc.max(step.max_depth())
                 });
             let calc_join_weight = calc_join_weight(&nodes[i], max_depth);
-            let dist = WeightedIndex::new(nodes.iter().map(calc_join_weight)).unwrap();
+            let dist = WeightedIndex::new(nodes.iter().enumerate().map(|(k, node)| {
+                if k == i {
+                    0
+                } else {
+                    calc_join_weight(node)
+                }
+            }))
+            .unwrap();
             let j = dist.sample(&mut rng);
             Some((i, j))
         } else {

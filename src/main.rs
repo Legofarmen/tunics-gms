@@ -36,6 +36,7 @@ fn main() {
     use crate::tunics::hide_chests;
     use crate::tunics::CommandFeature;
     use crate::tunics::Config;
+    use crate::tunics::Room;
     use crate::tunics::Treasure;
     use rand::rngs::StdRng;
     use rand::rngs::ThreadRng;
@@ -78,6 +79,6 @@ fn main() {
         //.check(|feature_plan| feature_plan.show())
         ;
     hide_chests(&mut rng4, feature_plan)
-        .into_room()
+        .into_room::<Room>()
         .check(|room| room.show());
 }
