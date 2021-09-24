@@ -75,5 +75,5 @@ fn main() {
     let feature_plan = FeaturePlan::from_steps(join_selector, prepend_selector, build_sequence)
         //.check(|feature_plan| feature_plan.show())
         ;
-    Room::from_feature_plan(hide_chests(&mut rng4, feature_plan)).check(|room| room.show());
+    Room::from_feature_plan(hide_chests(&mut rng4, feature_plan)).check(Room::show);
 }

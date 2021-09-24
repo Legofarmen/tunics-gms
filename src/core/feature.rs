@@ -50,12 +50,7 @@ impl<F> FeaturePlan<F> {
                 .fold(1, |acc, node| acc.max(node.max_depth() + 1)),
         }
     }
-}
 
-impl<F> FeaturePlan<F>
-where
-    F: Clone,
-{
     pub fn join(self, other: Self) -> Self {
         match (self, other) {
             (FeaturePlan::Branch(mut u), FeaturePlan::Branch(mut v)) => {
@@ -67,13 +62,18 @@ where
                 FeaturePlan::Branch(u)
             }
             (this, FeaturePlan::Branch(mut u)) => {
-                u.push(this.clone());
+                u.push(this);
                 FeaturePlan::Branch(u)
             }
-            (this, f) => FeaturePlan::Branch(vec![this.clone(), f]),
+            (this, f) => FeaturePlan::Branch(vec![this, f]),
         }
     }
+}
 
+impl<F> FeaturePlan<F>
+where
+    F: Clone,
+{
     pub fn prepend(&mut self, feature: F) {
         *self = FeaturePlan::Feature(feature, Box::new(self.clone()));
     }

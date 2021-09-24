@@ -186,7 +186,7 @@ impl<E> BuildPlan<E>
 where
     E: Debug + Eq,
 {
-    pub fn build_sequence<'a, F>(&'a self, traversal_selector: F) -> BuildSequence<'a, E, F>
+    pub fn build_sequence<F>(&self, traversal_selector: F) -> BuildSequence<E, F>
     where
         F: FnMut(&[Index]) -> Index,
     {
