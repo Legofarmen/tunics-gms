@@ -203,42 +203,6 @@ pub fn hide_chests<R: Rng>(
     visit(rng, feature_plan, false)
 }
 
-fn calc_join_weight(
-    tree: &FeaturePlan<AugFeature>,
-    global_max_depth: usize,
-) -> Box<dyn Fn(&FeaturePlan<AugFeature>) -> usize> {
-    fn big_key_pred(feature: &AugFeature) -> bool {
-        matches!(
-            feature,
-            AugFeature::Feature(
-                Feature::Boss | Feature::BigChest(_) | Feature::SmallChest(Treasure::BigKey)
-            )
-        )
-    }
-    let depth = tree.find_feature_depth(&big_key_pred);
-    if depth.is_some() {
-        Box::new(move |node| {
-            let node_max_depth = node.max_depth();
-            let big_key_depth = node
-                .find_feature_depth(&big_key_pred)
-                .unwrap_or(global_max_depth);
-            NODE_DEPTH_WEIGHT * (global_max_depth - node_max_depth)
-                + BIG_KEY_DEPTH_WEIGHT * big_key_depth
-                + 1
-        })
-    } else {
-        Box::new(move |node| {
-            let node_max_depth = node.max_depth();
-            let big_key_depth = node
-                .find_feature_depth(&big_key_pred)
-                .unwrap_or(global_max_depth);
-            NODE_DEPTH_WEIGHT * (global_max_depth - node_max_depth)
-                + BIG_KEY_DEPTH_WEIGHT * (global_max_depth - big_key_depth)
-                + 1
-        })
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum Lock {
     SmallKey,
@@ -413,15 +377,47 @@ where
 
     move |nodes: &[FeaturePlan<AugFeature>]| {
         if nodes.len() > MAX_WIDTH {
+            fn big_key_pred(feature: &AugFeature) -> bool {
+                matches!(
+                    feature,
+                    AugFeature::Feature(
+                        Feature::Boss
+                            | Feature::BigChest(_)
+                            | Feature::SmallChest(Treasure::BigKey)
+                    )
+                )
+            }
             let i = rng.gen_range(0..nodes.len());
-            let max_depth = nodes
+            let depth = nodes[i].find_feature_depth(&big_key_pred);
+            let global_max_depth = nodes
                 .iter()
                 .enumerate()
                 .filter_map(|(j, n)| if j == i { None } else { Some(n) })
                 .fold(0, |acc: usize, node: &FeaturePlan<_>| {
                     acc.max(node.max_depth())
                 });
-            let calc_join_weight = calc_join_weight(&nodes[i], max_depth);
+            let calc_join_weight: Box<dyn Fn(_) -> _> = if depth.is_some() {
+                Box::new(move |node: &FeaturePlan<AugFeature>| {
+                    let node_max_depth = node.max_depth();
+                    let big_key_depth = node
+                        .find_feature_depth(&big_key_pred)
+                        .unwrap_or(global_max_depth);
+                    NODE_DEPTH_WEIGHT * (global_max_depth - node_max_depth)
+                        + BIG_KEY_DEPTH_WEIGHT * big_key_depth
+                        + 1
+                })
+            } else {
+                Box::new(move |node: &FeaturePlan<AugFeature>| {
+                    let node_max_depth = node.max_depth();
+                    let big_key_depth = node
+                        .find_feature_depth(&big_key_pred)
+                        .unwrap_or(global_max_depth);
+                    NODE_DEPTH_WEIGHT * (global_max_depth - node_max_depth)
+                        + BIG_KEY_DEPTH_WEIGHT * (global_max_depth - big_key_depth)
+                        + 1
+                })
+            };
+
             let dist = WeightedIndex::new(nodes.iter().enumerate().map(|(k, node)| {
                 if k == i {
                     0
