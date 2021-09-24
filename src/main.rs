@@ -34,7 +34,6 @@ fn main() {
     use crate::tunics::get_prepend_selector;
     use crate::tunics::get_traversal_selector;
     use crate::tunics::hide_chests;
-    use crate::tunics::CommandFeature;
     use crate::tunics::Config;
     use crate::tunics::Room;
     use crate::tunics::Treasure;
@@ -75,7 +74,7 @@ fn main() {
         .build_sequence(traversal_selector)
         //.inspect(|step| println!("{:?}", step))
         ;
-    let feature_plan: FeaturePlan<CommandFeature> = FeaturePlan::<CommandFeature>::from_steps(join_selector, prepend_selector, build_sequence)
+    let feature_plan = FeaturePlan::from_steps(join_selector, prepend_selector, build_sequence)
         //.check(|feature_plan| feature_plan.show())
         ;
     hide_chests(&mut rng4, feature_plan)

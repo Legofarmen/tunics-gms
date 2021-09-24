@@ -1,4 +1,4 @@
-use crate::core::feature::Command;
+use crate::core::feature::Op;
 use bitvec::bitvec;
 use bitvec::vec::BitVec;
 use lazy_static::lazy_static;
@@ -17,7 +17,7 @@ pub struct BuildPlan<E>
 where
     E: Debug,
 {
-    steps: Vec<Command<E>>,
+    steps: Vec<Op<E>>,
     outgoing: HashMap<Index, HashSet<Index>>, // (Source, Target)
     incoming: HashMap<Index, HashSet<Index>>, // (Target, Source)
 }
@@ -33,9 +33,9 @@ where
             incoming: HashMap::new(),
         }
     }
-    pub fn step(&mut self, step: Command<E>) -> Index {
+    pub fn vertex(&mut self, vertex: Op<E>) -> Index {
         let i = self.steps.len();
-        self.steps.push(step);
+        self.steps.push(vertex);
         Index(i)
     }
     pub fn arc(&mut self, source: Index, dest: Index) {
@@ -77,7 +77,7 @@ where
         let mut result = Vec::new();
         while let Some(index) = (0..self.steps.len())
             .map(Index)
-            .find(|step| !permanent.contains(step))
+            .find(|vertex| !permanent.contains(vertex))
         {
             visit(
                 index,
@@ -92,7 +92,7 @@ where
     pub fn indices(&self) -> impl Iterator<Item = Index> {
         (0..self.steps.len()).map(Index)
     }
-    pub fn steps(&self) -> &[Command<E>] {
+    pub fn steps(&self) -> &[Op<E>] {
         self.steps.as_slice()
     }
     pub fn outgoing(&self, source: Index) -> &HashSet<Index> {
@@ -123,7 +123,7 @@ impl<E> BuildPlan<E>
 where
     E: Clone + Debug,
 {
-    pub fn get(&self, index: &Index) -> Option<Command<E>> {
+    pub fn get(&self, index: &Index) -> Option<Op<E>> {
         self.steps.get(index.0).cloned()
     }
 }
@@ -153,9 +153,9 @@ where
     E: Clone + Debug,
     F: FnMut(&[Index]) -> Index,
 {
-    type Item = Command<E>;
+    type Item = Op<E>;
 
-    fn next(&mut self) -> Option<Command<E>> {
+    fn next(&mut self) -> Option<Op<E>> {
         if self.open.is_empty() {
             return None;
         }
@@ -204,8 +204,8 @@ where
         }
     }
 
-    pub fn index(&self, step: Command<E>) -> Option<Index> {
-        self.steps.iter().position(|a| *a == step).map(Index)
+    pub fn index(&self, vertex: Op<E>) -> Option<Index> {
+        self.steps.iter().position(|a| *a == vertex).map(Index)
     }
 }
 

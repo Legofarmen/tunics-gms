@@ -1,11 +1,11 @@
 use crate::core::build;
 use crate::core::feature;
-use crate::core::feature::Command;
 use crate::core::feature::FeaturePlan;
+use crate::core::feature::Op;
 use rand::Rng;
 use std::collections::HashSet;
 
-type BuildPlan = build::BuildPlan<CommandFeature>;
+type BuildPlan = build::BuildPlan<AugFeature>;
 
 const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
@@ -21,29 +21,27 @@ pub struct Config {
 impl From<Config> for BuildPlan {
     fn from(config: Config) -> BuildPlan {
         let mut build_plan = BuildPlan::new();
-        let entrance = build_plan.step(Command::PrependGrouped(CommandFeature::Feature(
-            Feature::Entrance,
-        )));
+        let entrance =
+            build_plan.vertex(Op::PrependGrouped(AugFeature::Feature(Feature::Entrance)));
 
         for _ in 0..config.num_cul_de_sacs {
-            let cul_de_sac =
-                build_plan.step(Command::New(CommandFeature::Feature(Feature::CulDeSac)));
+            let cul_de_sac = build_plan.vertex(Op::New(AugFeature::Feature(Feature::CulDeSac)));
             build_plan.arc(entrance, cul_de_sac);
         }
 
         for _ in 0..config.num_fairies {
-            let fairy = build_plan.step(Command::New(CommandFeature::Feature(Feature::Fairy)));
+            let fairy = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Fairy)));
             build_plan.arc(entrance, fairy);
         }
 
-        let boss = build_plan.step(Command::New(CommandFeature::Feature(Feature::Boss)));
-        let big_key = build_plan.step(Command::New(CommandFeature::Feature(Feature::SmallChest(
+        let boss = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Boss)));
+        let big_key = build_plan.vertex(Op::New(AugFeature::Feature(Feature::SmallChest(
             Treasure::BigKey,
         ))));
         build_plan.arc(big_key, boss);
 
-        let hide_chests = build_plan.step(Command::PrependEach(CommandFeature::HideSmallChests));
-        let compass = build_plan.step(Command::New(CommandFeature::Feature(Feature::SmallChest(
+        let hide_chests = build_plan.vertex(Op::PrependEach(AugFeature::HideSmallChests));
+        let compass = build_plan.vertex(Op::New(AugFeature::Feature(Feature::SmallChest(
             Treasure::Compass,
         ))));
         build_plan.arc(hide_chests, boss);
@@ -51,12 +49,11 @@ impl From<Config> for BuildPlan {
         build_plan.arc(entrance, compass);
 
         for treasure in &config.treasures {
-            let big_chest = build_plan.step(Command::New(CommandFeature::Feature(
-                Feature::BigChest(*treasure),
-            )));
+            let big_chest =
+                build_plan.vertex(Op::New(AugFeature::Feature(Feature::BigChest(*treasure))));
             build_plan.arc(big_key, big_chest);
             for obstacle in treasure.get_obstacles() {
-                let obstacle = build_plan.step(Command::PrependEach(CommandFeature::Feature(
+                let obstacle = build_plan.vertex(Op::PrependEach(AugFeature::Feature(
                     Feature::Obstacle(*obstacle),
                 )));
                 build_plan.arc(big_chest, obstacle);
@@ -66,9 +63,8 @@ impl From<Config> for BuildPlan {
 
         let mut last_locked_door = None;
         for i in 0..config.num_small_keys {
-            let locked_door = build_plan.step(Command::PrependOne(CommandFeature::Feature(
-                Feature::SmallKeyDoor,
-            )));
+            let locked_door =
+                build_plan.vertex(Op::PrependOne(AugFeature::Feature(Feature::SmallKeyDoor)));
             if let Some(last_locked_door) = last_locked_door {
                 build_plan.arc(locked_door, last_locked_door);
             } else {
@@ -77,7 +73,7 @@ impl From<Config> for BuildPlan {
             if i == config.num_small_keys - 1 {
                 let mut last_small_key = None;
                 for j in 0..config.num_small_keys {
-                    let small_key = build_plan.step(Command::New(CommandFeature::Feature(
+                    let small_key = build_plan.vertex(Op::New(AugFeature::Feature(
                         Feature::SmallChest(Treasure::SmallKey),
                     )));
                     if let Some(last_small_key) = last_small_key {
@@ -97,16 +93,16 @@ impl From<Config> for BuildPlan {
             build_plan.arc(entrance, big_key);
         }
 
-        let map = build_plan.step(Command::New(CommandFeature::Feature(Feature::SmallChest(
+        let map = build_plan.vertex(Op::New(AugFeature::Feature(Feature::SmallChest(
             Treasure::Map,
         ))));
-        if let Some(weak_wall) = build_plan.index(Command::PrependEach(CommandFeature::Feature(
+        if let Some(weak_wall) = build_plan.index(Op::PrependEach(AugFeature::Feature(
             Feature::Obstacle(Obstacle::WeakWall),
         ))) {
             let very_weak_wall = build_plan
-                .index(Command::PrependEach(CommandFeature::Feature(
-                    Feature::Obstacle(Obstacle::VeryWeakWall),
-                )))
+                .index(Op::PrependEach(AugFeature::Feature(Feature::Obstacle(
+                    Obstacle::VeryWeakWall,
+                ))))
                 .unwrap();
             build_plan.arc(very_weak_wall, weak_wall);
             build_plan.arc(map, very_weak_wall);
@@ -168,22 +164,22 @@ pub enum Feature {
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub enum CommandFeature {
+pub enum AugFeature {
     Feature(Feature),
     HideSmallChests,
 }
 
 pub fn hide_chests<R: Rng>(
     rng: &mut R,
-    feature_plan: FeaturePlan<CommandFeature>,
+    feature_plan: FeaturePlan<AugFeature>,
 ) -> FeaturePlan<Feature> {
     fn visit<R: Rng>(
         rng: &mut R,
-        tree: FeaturePlan<CommandFeature>,
+        tree: FeaturePlan<AugFeature>,
         is_below: bool,
     ) -> FeaturePlan<Feature> {
         match tree {
-            FeaturePlan::Feature(CommandFeature::Feature(Feature::SmallChest(treasure)), next)
+            FeaturePlan::Feature(AugFeature::Feature(Feature::SmallChest(treasure)), next)
                 if is_below =>
             {
                 let next = visit(rng, *next, true);
@@ -193,38 +189,38 @@ pub fn hide_chests<R: Rng>(
                     next.prepended(Feature::SmallChest(treasure))
                 }
             }
-            FeaturePlan::Feature(CommandFeature::Feature(feature), next) => {
+            FeaturePlan::Feature(AugFeature::Feature(feature), next) => {
                 visit(rng, *next, is_below).prepended(feature)
             }
             FeaturePlan::Branch(nodes) => FeaturePlan::Branch(
                 nodes
                     .into_iter()
-                    .map(|step| visit(rng, step, is_below))
+                    .map(|node| visit(rng, node, is_below))
                     .collect(),
             ),
-            FeaturePlan::Feature(CommandFeature::HideSmallChests, next) => visit(rng, *next, true),
+            FeaturePlan::Feature(AugFeature::HideSmallChests, next) => visit(rng, *next, true),
         }
     }
     visit(rng, feature_plan, false)
 }
 
 fn calc_join_weight(
-    tree: &FeaturePlan<CommandFeature>,
+    tree: &FeaturePlan<AugFeature>,
     global_max_depth: usize,
-) -> Box<dyn Fn(&FeaturePlan<CommandFeature>) -> usize> {
-    fn big_key_pred(feature: &CommandFeature) -> bool {
+) -> Box<dyn Fn(&FeaturePlan<AugFeature>) -> usize> {
+    fn big_key_pred(feature: &AugFeature) -> bool {
         matches!(
             feature,
-            CommandFeature::Feature(
+            AugFeature::Feature(
                 Feature::Boss | Feature::BigChest(_) | Feature::SmallChest(Treasure::BigKey)
             )
         )
     }
     let depth = tree.find_feature_depth(&big_key_pred);
     if depth.is_some() {
-        Box::new(move |step| {
-            let node_max_depth = step.max_depth();
-            let big_key_depth = step
+        Box::new(move |node| {
+            let node_max_depth = node.max_depth();
+            let big_key_depth = node
                 .find_feature_depth(&big_key_pred)
                 .unwrap_or(global_max_depth);
             NODE_DEPTH_WEIGHT * (global_max_depth - node_max_depth)
@@ -232,9 +228,9 @@ fn calc_join_weight(
                 + 1
         })
     } else {
-        Box::new(move |step| {
-            let node_max_depth = step.max_depth();
-            let big_key_depth = step
+        Box::new(move |node| {
+            let node_max_depth = node.max_depth();
+            let big_key_depth = node
                 .find_feature_depth(&big_key_pred)
                 .unwrap_or(global_max_depth);
             NODE_DEPTH_WEIGHT * (global_max_depth - node_max_depth)
@@ -398,31 +394,31 @@ where
     }
 }
 
-pub fn get_prepend_selector<R>(mut rng: R) -> impl FnMut(&[FeaturePlan<CommandFeature>]) -> usize
+pub fn get_prepend_selector<R>(mut rng: R) -> impl FnMut(&[FeaturePlan<AugFeature>]) -> usize
 where
     R: Rng,
 {
-    move |nodes: &[FeaturePlan<CommandFeature>]| rng.gen_range(0..nodes.len())
+    move |nodes: &[FeaturePlan<AugFeature>]| rng.gen_range(0..nodes.len())
 }
 
 pub fn get_join_selector<'a, R>(
     mut rng: R,
-) -> impl FnMut(&[FeaturePlan<CommandFeature>]) -> Option<(usize, usize)>
+) -> impl FnMut(&[FeaturePlan<AugFeature>]) -> Option<(usize, usize)>
 where
     R: 'a + Rng,
 {
     use rand::distributions::Distribution;
     use rand::distributions::WeightedIndex;
 
-    move |nodes: &[FeaturePlan<CommandFeature>]| {
+    move |nodes: &[FeaturePlan<AugFeature>]| {
         if nodes.len() > MAX_WIDTH {
             let i = rng.gen_range(0..nodes.len());
             let max_depth = nodes
                 .iter()
                 .enumerate()
                 .filter_map(|(j, n)| if j == i { None } else { Some(n) })
-                .fold(0, |acc: usize, step: &FeaturePlan<_>| {
-                    acc.max(step.max_depth())
+                .fold(0, |acc: usize, node: &FeaturePlan<_>| {
+                    acc.max(node.max_depth())
                 });
             let calc_join_weight = calc_join_weight(&nodes[i], max_depth);
             let dist = WeightedIndex::new(nodes.iter().enumerate().map(|(k, node)| {

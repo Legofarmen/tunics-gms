@@ -146,13 +146,13 @@ where
     where
         J: FnMut(&[FeaturePlan<F>]) -> Option<(usize, usize)>,
         P: FnMut(&[FeaturePlan<F>]) -> usize,
-        I: IntoIterator<Item = Command<F>>,
+        I: IntoIterator<Item = Op<F>>,
     {
         let mut feature_plan = FeaturePlan::new();
 
         for step in steps {
             feature_plan = match step {
-                Command::New(feature) => {
+                Op::New(feature) => {
                     let feature = FeaturePlan::new_feature(feature);
                     let mut nodes = match feature_plan {
                         FeaturePlan::Branch(mut nodes) => {
@@ -174,7 +174,7 @@ where
                     }
                     FeaturePlan::Branch(nodes)
                 }
-                Command::PrependOne(feature) => match feature_plan {
+                Op::PrependOne(feature) => match feature_plan {
                     FeaturePlan::Branch(mut nodes) => {
                         let i = prepend_selector(&nodes);
                         nodes.get_mut(i).unwrap().prepend(feature);
@@ -182,7 +182,7 @@ where
                     }
                     _ => feature_plan.prepended(feature),
                 },
-                Command::PrependEach(feature) => match feature_plan {
+                Op::PrependEach(feature) => match feature_plan {
                     FeaturePlan::Branch(nodes) => FeaturePlan::Branch(
                         nodes
                             .into_iter()
@@ -191,7 +191,7 @@ where
                     ),
                     _ => feature_plan.prepended(feature),
                 },
-                Command::PrependGrouped(feature) => feature_plan.prepended(feature),
+                Op::PrependGrouped(feature) => feature_plan.prepended(feature),
             }
         }
         feature_plan
@@ -208,7 +208,7 @@ where
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Command<F>
+pub enum Op<F>
 where
     F: Debug,
 {
