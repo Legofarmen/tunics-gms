@@ -33,8 +33,17 @@ fn main() {
     use crate::tunics::Treasure;
     use rand::rngs::StdRng;
     use rand::rngs::ThreadRng;
+    use std::env;
+    use std::str::FromStr;
 
-    let seed = ThreadRng::default().gen();
+    let mut args = env::args().skip(1);
+    let seed = args
+        .next()
+        .map(|s| u64::from_str(&s).expect("seed must be numeric"))
+        .unwrap_or_else(|| ThreadRng::default().gen());
+    args.next()
+        .and_then::<String, _>(|_| panic!("too many argument"));
+
     println!("{}", seed);
     let mut rng = StdRng::seed_from_u64(seed);
     let rng2 = split_rng(&mut rng);
