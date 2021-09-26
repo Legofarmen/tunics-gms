@@ -1,13 +1,6 @@
 pub mod core;
 pub mod tunics;
 
-use rand::Rng;
-use rand::SeedableRng;
-
-fn split_rng<R: Rng>(rng: &mut R) -> impl Rng {
-    rand::rngs::StdRng::seed_from_u64(rng.gen())
-}
-
 trait Check<T> {
     fn check<F>(self, f: F) -> T
     where
@@ -37,6 +30,8 @@ fn main() {
     use crate::tunics::Treasure;
     use rand::rngs::StdRng;
     use rand::rngs::ThreadRng;
+    use rand::Rng;
+    use rand::SeedableRng;
     use std::env;
     use std::str::FromStr;
 
@@ -50,10 +45,10 @@ fn main() {
     println!("{}", seed);
 
     let mut rng = StdRng::seed_from_u64(seed);
-    let rng1 = split_rng(&mut rng);
-    let rng2 = split_rng(&mut rng);
-    let rng3 = split_rng(&mut rng);
-    let mut rng4 = split_rng(&mut rng);
+    let rng1 = StdRng::seed_from_u64(rng.gen());
+    let rng2 = StdRng::seed_from_u64(rng.gen());
+    let rng3 = StdRng::seed_from_u64(rng.gen());
+    let mut rng4 = StdRng::seed_from_u64(rng.gen());
 
     let build_plan = BuildPlan::from(Config {
         num_fairies: 1,
