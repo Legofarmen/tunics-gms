@@ -194,20 +194,22 @@ where
 
 pub trait Room: Default {
     type Feature;
+
     fn add_exits<I>(self, exits: I) -> Self
     where
         I: IntoIterator<Item = Self>;
-    fn apply(self, feature: Self::Feature) -> Result<Self, (Self::Feature, Self)>;
+
+    fn add_feature(self, feature: Self::Feature) -> Result<Self, (Self::Feature, Self)>;
 
     fn from_feature_plan(feature_plan: FeaturePlan<Self::Feature>) -> Self {
         match feature_plan {
             FeaturePlan::Feature(feature, child) => {
                 let (Ok(room) | Err(room)) = Self::from_feature_plan(*child)
-                    .apply(feature)
+                    .add_feature(feature)
                     .map_err(|(feature, room)| {
                         Self::default()
                             .add_exits(vec![room])
-                            .apply(feature)
+                            .add_feature(feature)
                             .ok()
                             .unwrap()
                     });

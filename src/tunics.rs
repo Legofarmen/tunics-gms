@@ -277,7 +277,7 @@ impl feature::Room for Room {
         self
     }
 
-    fn apply(mut self, feature: Feature) -> Result<Self, (Feature, Self)> {
+    fn add_feature(mut self, feature: Feature) -> Result<Self, (Feature, Self)> {
         match feature {
             Feature::Boss
                 if self.entrance.is_none() && self.chest.is_none() && self.obstacle.is_none() =>
