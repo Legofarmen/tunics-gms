@@ -1,9 +1,22 @@
+use std::fmt;
 use std::fmt::Debug;
 
 #[derive(Clone)]
 pub enum FeaturePlan<F> {
     Feature(F, Box<FeaturePlan<F>>),
     Branch(Vec<FeaturePlan<F>>),
+}
+
+impl<F> fmt::Debug for FeaturePlan<F>
+where
+    F: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            FeaturePlan::Feature(feature, next) => write!(f, "{:?} : {:?}", feature, next),
+            FeaturePlan::Branch(nodes) => nodes.fmt(f),
+        }
+    }
 }
 
 impl<F> FeaturePlan<F> {
@@ -61,11 +74,11 @@ impl<F> FeaturePlan<F> {
                 u.push(feature);
                 FeaturePlan::Branch(u)
             }
-            (this, FeaturePlan::Branch(mut u)) => {
-                u.push(this);
+            (feature, FeaturePlan::Branch(mut u)) => {
+                u.push(feature);
                 FeaturePlan::Branch(u)
             }
-            (this, f) => FeaturePlan::Branch(vec![this, f]),
+            (feature1, feature2) => FeaturePlan::Branch(vec![feature1, feature2]),
         }
     }
 }

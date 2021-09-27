@@ -168,10 +168,7 @@ pub enum AugFeature {
     HideSmallChests,
 }
 
-pub fn hide_chests<R: Rng>(
-    rng: &mut R,
-    feature_plan: FeaturePlan<AugFeature>,
-) -> FeaturePlan<Feature> {
+pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> FeaturePlan<Feature> {
     fn visit<R: Rng>(
         rng: &mut R,
         tree: FeaturePlan<AugFeature>,
@@ -191,12 +188,11 @@ pub fn hide_chests<R: Rng>(
             FeaturePlan::Feature(AugFeature::Feature(feature), next) => {
                 visit(rng, *next, is_below).prepended(feature)
             }
-            FeaturePlan::Branch(nodes) => FeaturePlan::Branch(
-                nodes
-                    .into_iter()
-                    .map(|node| visit(rng, node, is_below))
-                    .collect(),
-            ),
+            FeaturePlan::Branch(nodes) => nodes
+                .into_iter()
+                .map(|node| visit(rng, node, is_below))
+                .reduce(|acc, node| acc.join(node))
+                .unwrap_or_else(|| FeaturePlan::default()),
             FeaturePlan::Feature(AugFeature::HideSmallChests, next) => visit(rng, *next, true),
         }
     }

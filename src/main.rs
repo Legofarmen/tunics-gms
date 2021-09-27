@@ -18,6 +18,7 @@ impl<T> Check<T> for T {
 }
 
 mod layout {
+    use crate::tunics::Room;
     use std::collections::HashMap;
 
     #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -219,76 +220,13 @@ mod layout {
             }
             println!("}}");
         }
+        pub fn from_room(room: Room) -> Layout {
+            let mut layout = Layout::default();
+            walk(&mut layout, room, 0, 0);
+            layout
+        }
     }
-}
-
-fn main() {
-    use crate::core::build::BuildPlan;
-    use crate::core::feature::FeaturePlan;
-    use crate::core::feature::Room as _;
-    use crate::tunics::get_join_selector;
-    use crate::tunics::get_prepend_selector;
-    use crate::tunics::get_traversal_selector;
-    use crate::tunics::hide_chests;
-    use crate::tunics::Config;
-    use crate::tunics::Room;
-    use crate::tunics::Treasure;
-    use rand::rngs::StdRng;
-    use rand::rngs::ThreadRng;
-    use rand::Rng;
-    use rand::SeedableRng;
-    use std::env;
-    use std::str::FromStr;
-
-    let mut args = env::args().skip(1);
-    let seed = args
-        .next()
-        .map(|s| u64::from_str(&s).expect("seed must be numeric"))
-        .unwrap_or_else(|| ThreadRng::default().gen());
-    args.next()
-        .and_then::<String, _>(|_| panic!("too many argument"));
-    eprintln!("{}", seed);
-
-    let mut rng = StdRng::seed_from_u64(seed);
-    let rng1 = StdRng::seed_from_u64(rng.gen());
-    let rng2 = StdRng::seed_from_u64(rng.gen());
-    let rng3 = StdRng::seed_from_u64(rng.gen());
-    let mut rng4 = StdRng::seed_from_u64(rng.gen());
-
-    let build_plan = BuildPlan::from(Config {
-        num_fairies: 0,
-        num_cul_de_sacs: 0,
-        num_small_keys: 1,
-        treasures: [Treasure::BombBag].iter().cloned().collect(),
-        //treasures: [].iter().cloned().collect(),
-    })
-    //.check(|build_plan| build_plan.show())
-    //;
-    ;
-
-    let traversal_selector = get_traversal_selector(rng1, &build_plan);
-    let prepend_selector = get_prepend_selector(rng2);
-    let join_selector = get_join_selector(rng3);
-    let build_sequence = build_plan
-        .build_sequence(traversal_selector)
-        //.inspect(|step| eprintln!("{:?}", step))
-        //;
-        ;
-    let feature_plan = FeaturePlan::from_steps(join_selector, prepend_selector, build_sequence)
-        //.check(|feature_plan| feature_plan.show())
-        //;
-        ;
-    let feature_plan = hide_chests(&mut rng4, feature_plan)
-        .check(|feature_plan| feature_plan.show())
-        //;
-        ;
-    let room = Room::from_feature_plan(feature_plan)
-        //.check(Room::show)
-        //;
-        ;
-
-    use layout::Dir4;
-    fn walk(layout: &mut Layout, mut room: Room, mut depth: i8, lane0: i8) -> i8 {
+    pub fn walk(layout: &mut Layout, mut room: Room, mut depth: i8, lane0: i8) -> i8 {
         fn room_label(room: &Room) -> String {
             let obstacle = room
                 .obstacle
@@ -338,9 +276,73 @@ fn main() {
         }
         depth
     }
+}
 
+fn main() {
+    use crate::core::build::BuildPlan;
+    use crate::core::feature::FeaturePlan;
+    use crate::core::feature::Room as _;
+    use crate::tunics::get_join_selector;
+    use crate::tunics::get_prepend_selector;
+    use crate::tunics::get_traversal_selector;
+    use crate::tunics::lower;
+    use crate::tunics::Config;
+    use crate::tunics::Room;
+    use crate::tunics::Treasure;
     use layout::Layout;
-    let mut l = Layout::default();
-    walk(&mut l, room, 0, 0);
-    //l.show();
+    use rand::rngs::StdRng;
+    use rand::rngs::ThreadRng;
+    use rand::Rng;
+    use rand::SeedableRng;
+    use std::env;
+    use std::str::FromStr;
+
+    let mut args = env::args().skip(1);
+    let seed = args
+        .next()
+        .map(|s| u64::from_str(&s).expect("seed must be numeric"))
+        .unwrap_or_else(|| ThreadRng::default().gen());
+    args.next()
+        .and_then::<String, _>(|_| panic!("too many argument"));
+    eprintln!("{}", seed);
+
+    let mut rng = StdRng::seed_from_u64(seed);
+    let rng1 = StdRng::seed_from_u64(rng.gen());
+    let rng2 = StdRng::seed_from_u64(rng.gen());
+    let rng3 = StdRng::seed_from_u64(rng.gen());
+    let mut rng4 = StdRng::seed_from_u64(rng.gen());
+
+    let build_plan = BuildPlan::from(Config {
+        num_fairies: 0,
+        num_cul_de_sacs: 0,
+        num_small_keys: 1,
+        treasures: [Treasure::BombBag].iter().cloned().collect(),
+        //treasures: [].iter().cloned().collect(),
+    })
+    //.check(|build_plan| build_plan.show())
+    //;
+    ;
+
+    let traversal_selector = get_traversal_selector(rng1, &build_plan);
+    let prepend_selector = get_prepend_selector(rng2);
+    let join_selector = get_join_selector(rng3);
+    let build_sequence = build_plan
+        .build_sequence(traversal_selector)
+        //.inspect(|step| eprintln!("{:?}", step))
+        //;
+        ;
+    let feature_plan = FeaturePlan::from_steps(join_selector, prepend_selector, build_sequence)
+        //.check(|feature_plan| feature_plan.show())
+        //;
+        ;
+    let feature_plan = lower(&mut rng4, feature_plan)
+        //.check(|feature_plan| feature_plan.show())
+        //;
+        ;
+    let room = Room::from_feature_plan(feature_plan)
+        //.check(Room::show)
+        //;
+        ;
+    let l = Layout::from_room(room);
+    l.show();
 }
