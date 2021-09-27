@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum FeaturePlan<F> {
     Feature(F, Box<FeaturePlan<F>>),
     Branch(Vec<FeaturePlan<F>>),
@@ -84,27 +84,32 @@ where
     F: Debug,
 {
     pub fn show(&self) {
-        fn visit<F>(node: &FeaturePlan<F>, mark: bool, indent: usize)
+        fn visit<F>(plan: &FeaturePlan<F>, parent: usize, node: usize) -> usize
         where
             F: Debug,
         {
-            let prefix = if mark { "+ " } else { "  " };
-            match node {
-                FeaturePlan::Feature(e, t) => {
-                    eprintln!("{:indent$}{}{:?}", "", prefix, e, indent = indent);
-                    visit(t, false, indent);
+            match plan {
+                FeaturePlan::Feature(feature, t) => {
+                    println!("n{} [label=\"{:?}\"];", node, feature);
+                    let next = visit(t, node, node + 1);
+                    println!("n{} -- n{};", node, parent);
+                    next
                 }
                 FeaturePlan::Branch(ts) => {
-                    if !ts.is_empty() {
-                        eprintln!("{:indent$}{}<branch>", "", prefix, indent = indent);
-                        for t in ts {
-                            visit(t, true, indent + 2);
-                        }
+                    println!("n{} [label=\"\"];", node);
+                    println!("n{} -- n{};", node, parent);
+                    let mut next = node + 1;
+                    for t in ts {
+                        next = visit(t, node, next);
                     }
+                    next
                 }
             }
         }
-        visit(self, true, 0);
+        println!("graph {{");
+        println!("rankdir=BT;");
+        visit(self, 0, 0);
+        println!("}}");
     }
 }
 

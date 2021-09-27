@@ -198,7 +198,7 @@ mod layout {
                 }
             }
             println!("graph {{");
-            println!("  rankdir=BT;");
+            println!("  layout=neato;");
             println!("  node [shape=record, width=\"1\", height=\"1\"];");
             for (coord, desc) in &self.rooms {
                 println!(
@@ -263,6 +263,7 @@ fn main() {
         //treasures: [].iter().cloned().collect(),
     })
     //.check(|build_plan| build_plan.show())
+    //;
     ;
 
     let traversal_selector = get_traversal_selector(rng1, &build_plan);
@@ -271,11 +272,20 @@ fn main() {
     let build_sequence = build_plan
         .build_sequence(traversal_selector)
         //.inspect(|step| eprintln!("{:?}", step))
+        //;
         ;
     let feature_plan = FeaturePlan::from_steps(join_selector, prepend_selector, build_sequence)
         //.check(|feature_plan| feature_plan.show())
+        //;
         ;
-    let room = Room::from_feature_plan(hide_chests(&mut rng4, feature_plan)).check(Room::show);
+    let feature_plan = hide_chests(&mut rng4, feature_plan)
+        .check(|feature_plan| feature_plan.show())
+        //;
+        ;
+    let room = Room::from_feature_plan(feature_plan)
+        //.check(Room::show)
+        //;
+        ;
 
     use layout::Dir4;
     fn walk(layout: &mut Layout, mut room: Room, mut depth: i8, lane0: i8) -> i8 {
@@ -332,5 +342,5 @@ fn main() {
     use layout::Layout;
     let mut l = Layout::default();
     walk(&mut l, room, 0, 0);
-    l.show();
+    //l.show();
 }
