@@ -91,12 +91,12 @@ where
             let prefix = if mark { "+ " } else { "  " };
             match node {
                 FeaturePlan::Feature(e, t) => {
-                    println!("{:indent$}{}{:?}", "", prefix, e, indent = indent);
+                    eprintln!("{:indent$}{}{:?}", "", prefix, e, indent = indent);
                     visit(t, false, indent);
                 }
                 FeaturePlan::Branch(ts) => {
                     if !ts.is_empty() {
-                        println!("{:indent$}{}<branch>", "", prefix, indent = indent);
+                        eprintln!("{:indent$}{}<branch>", "", prefix, indent = indent);
                         for t in ts {
                             visit(t, true, indent + 2);
                         }

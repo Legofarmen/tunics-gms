@@ -220,7 +220,7 @@ impl<A: Debug> BuildPlan<A> {
                 .map(|index| format!("{}", index.0))
                 .collect();
             outgoing.sort();
-            println!(
+            eprintln!(
                 "{}. {:?} ({})",
                 index.0,
                 self.steps[index.0],

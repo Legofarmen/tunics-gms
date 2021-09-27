@@ -243,7 +243,7 @@ impl Room {
                 Some(false) => "in front of",
                 None => "",
             };
-            println!(
+            eprintln!(
                 "{:indent$}* {}:{}:{}:{}",
                 "",
                 lock,
