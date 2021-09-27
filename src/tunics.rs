@@ -130,7 +130,7 @@ pub enum Obstacle {
 pub enum Treasure {
     NoChest,
     BigKey,
-    BombsCounter,
+    BombBag,
     Map,
     Compass,
     SmallKey,
@@ -141,7 +141,7 @@ impl Treasure {
         match self {
             Treasure::NoChest => &[],
             Treasure::BigKey => &[],
-            Treasure::BombsCounter => &[Obstacle::WeakWall, Obstacle::VeryWeakWall],
+            Treasure::BombBag => &[Obstacle::WeakWall, Obstacle::VeryWeakWall],
             Treasure::Map => &[],
             Treasure::Compass => &[],
             Treasure::SmallKey => &[],

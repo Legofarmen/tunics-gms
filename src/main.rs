@@ -18,9 +18,7 @@ impl<T> Check<T> for T {
 }
 
 mod layout {
-    use itertools::Itertools;
     use std::collections::HashMap;
-    use std::ops::RangeInclusive;
 
     #[derive(Clone, Copy, Eq, Hash, PartialEq)]
     pub enum Dir2 {
@@ -183,20 +181,6 @@ mod layout {
                 }
             }
         }
-        pub fn bounds(&self) -> (RangeInclusive<i8>, RangeInclusive<i8>) {
-            use itertools::MinMaxResult;
-
-            fn as_range(minmax: MinMaxResult<i8>) -> RangeInclusive<i8> {
-                match minmax {
-                    MinMaxResult::NoElements => 0..=0,
-                    MinMaxResult::OneElement(i) => i..=i,
-                    MinMaxResult::MinMax(min, max) => min..=max,
-                }
-            }
-            let minmax_x = self.rooms.keys().map(|c| c.x).minmax();
-            let minmax_y = self.rooms.keys().map(|c| c.y).minmax();
-            (as_range(minmax_x), as_range(minmax_y))
-        }
         pub fn show(&self) {
             fn room_name(coord: Coord) -> String {
                 if coord.y >= 0 {
@@ -263,7 +247,7 @@ fn main() {
         .unwrap_or_else(|| ThreadRng::default().gen());
     args.next()
         .and_then::<String, _>(|_| panic!("too many argument"));
-    //eprintln!("{}", seed);
+    eprintln!("{}", seed);
 
     let mut rng = StdRng::seed_from_u64(seed);
     let rng1 = StdRng::seed_from_u64(rng.gen());
@@ -272,10 +256,10 @@ fn main() {
     let mut rng4 = StdRng::seed_from_u64(rng.gen());
 
     let build_plan = BuildPlan::from(Config {
-        num_fairies: 1,
-        num_cul_de_sacs: 1,
-        num_small_keys: 2,
-        treasures: [Treasure::BombsCounter].iter().cloned().collect(),
+        num_fairies: 0,
+        num_cul_de_sacs: 0,
+        num_small_keys: 1,
+        treasures: [Treasure::BombBag].iter().cloned().collect(),
         //treasures: [].iter().cloned().collect(),
     })
     //.check(|build_plan| build_plan.show())
@@ -293,58 +277,60 @@ fn main() {
         ;
     let room = Room::from_feature_plan(hide_chests(&mut rng4, feature_plan)).check(Room::show);
 
-    //pub entrance: Option<Lock>,
-    //pub chest: Option<Treasure>,
-    //pub far_side_chest: Option<bool>,
-
     use layout::Dir4;
-    fn walk(layout: &mut Layout, room: Room, mut y: i8, x: i8) -> i8 {
-        let obstacle = room
-            .obstacle
-            .map(|o| format!("{:?}", o))
-            .unwrap_or_else(String::new);
-        let (near_chest, far_chest) = if room.far_side_chest == Some(true) {
-            (
-                String::new(),
-                room.chest
-                    .map(|t| format!("{:?}", t))
-                    .unwrap_or_else(String::new),
-            )
-        } else {
-            (
-                room.chest
-                    .map(|t| format!("{:?}", t))
-                    .unwrap_or_else(String::new),
-                String::new(),
-            )
-        };
-        let desc = format!("{{{}|{}|{}}}", far_chest, obstacle, near_chest);
-        layout.add_room((y, x), desc);
-        for child in room.exits {
-            let y0 = y;
-            let entrance = child
-                .entrance
+    fn walk(layout: &mut Layout, mut room: Room, mut depth: i8, lane0: i8) -> i8 {
+        fn room_label(room: &Room) -> String {
+            let obstacle = room
+                .obstacle
+                .map(|o| format!("{:?}", o))
+                .unwrap_or_else(String::new);
+            let (near_chest, far_chest) = if room.far_side_chest == Some(true) {
+                (
+                    String::new(),
+                    room.chest
+                        .map(|t| format!("{:?}", t))
+                        .unwrap_or_else(String::new),
+                )
+            } else {
+                (
+                    room.chest
+                        .map(|t| format!("{:?}", t))
+                        .unwrap_or_else(String::new),
+                    String::new(),
+                )
+            };
+            format!("{{{}|{}|{}}}", far_chest, obstacle, near_chest)
+        }
+        fn entrance_label(room: &Room) -> String {
+            room.entrance
                 .as_ref()
                 .map(|l| format!("{:?}", l))
-                .unwrap_or_else(String::new);
-            y = walk(layout, child, y + 1, x + 1);
-            for y1 in (y0 + 1)..=y {
-                layout.add_room((y1, x), "");
-                layout.add_door((y1, x, Dir4::South), "");
-            }
-            layout.add_door((y0 + 1, x + 1, Dir4::West), entrance);
+                .unwrap_or_else(String::new)
         }
-        y
+        let desc = room_label(&room);
+        layout.add_room((depth, lane0), desc);
+        let last_exit = room.exits.pop();
+        for child in room.exits {
+            let old_child = depth;
+            let entrance = entrance_label(&child);
+            depth = walk(layout, child, depth + 1, lane0 + 1);
+            for child_depth in (old_child + 1)..=depth {
+                layout.add_room((child_depth, lane0), "");
+                layout.add_door((child_depth, lane0, Dir4::South), "");
+            }
+            layout.add_door((old_child + 1, lane0 + 1, Dir4::West), entrance);
+        }
+        if let Some(last_exit) = last_exit {
+            let old_child = depth;
+            let entrance = entrance_label(&last_exit);
+            depth = walk(layout, last_exit, depth + 1, lane0);
+            layout.add_door((old_child + 1, lane0, Dir4::South), entrance);
+        }
+        depth
     }
 
-    //use layout::Dir4::*;
     use layout::Layout;
     let mut l = Layout::default();
-    //l.add_room((0, 0), "{|entrance|}");
-    //l.add_room((1, 0), "{|mote|key}");
-    //l.add_room((0, 1), "{||}");
-    //l.add_door((0, 0, North), "lock");
-    //l.add_door((0, 0, East), "");
     walk(&mut l, room, 0, 0);
     l.show();
 }
