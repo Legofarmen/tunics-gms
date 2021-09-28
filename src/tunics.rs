@@ -10,7 +10,7 @@ const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
 const MAX_WIDTH: usize = 3;
 
-type Feature = feature::Feature<Interior, Treasure, Obstacle, Door>;
+type Feature = feature::Feature<Interior, Obstacle>;
 
 pub struct Config {
     pub num_small_keys: usize,
@@ -43,28 +43,30 @@ impl From<Config> for BuildPlan<AugFeature> {
         let boss = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Interior(
             Interior::Boss,
         ))));
-        let big_key = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Treasure(
-            Treasure::BigKey,
+        let big_key = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Interior(
+            Interior::SmallChest(Treasure::BigKey),
         ))));
         build_plan.arc(big_key, boss);
 
         let hide_chests = build_plan.vertex(Op::PrependEach(AugFeature::HideSmallChests));
-        let compass = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Treasure(
-            Treasure::Compass,
+        let compass = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Interior(
+            Interior::SmallChest(Treasure::Compass),
         ))));
         build_plan.arc(hide_chests, boss);
         build_plan.arc(compass, hide_chests);
         build_plan.arc(entrance, compass);
 
         for treasure in &config.treasures {
-            let big_chest = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Obstacle(
-                Obstacle::BigChest,
-                Some(*treasure),
+            let big_chest = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Interior(
+                Interior::BigChest(*treasure),
             ))));
             build_plan.arc(big_key, big_chest);
             for obstacle in treasure.get_obstacles() {
                 let obstacle = build_plan.vertex(Op::PrependEach(AugFeature::Feature(
-                    Feature::Obstacle(*obstacle, None),
+                    Feature::Obstacle(Obstacle {
+                        kind: *obstacle,
+                        treasure: None,
+                    }),
                 )));
                 build_plan.arc(big_chest, obstacle);
                 build_plan.arc(obstacle, boss);
@@ -74,7 +76,10 @@ impl From<Config> for BuildPlan<AugFeature> {
         let mut last_locked_door = None;
         for i in 0..config.num_small_keys {
             let locked_door = build_plan.vertex(Op::PrependOne(AugFeature::Feature(
-                Feature::Door(Door::SmallKey),
+                Feature::Obstacle(Obstacle {
+                    kind: ObstacleKind::Door(Door::SmallKey),
+                    treasure: None,
+                }),
             )));
             if let Some(last_locked_door) = last_locked_door {
                 build_plan.arc(locked_door, last_locked_door);
@@ -85,7 +90,7 @@ impl From<Config> for BuildPlan<AugFeature> {
                 let mut last_small_key = None;
                 for j in 0..config.num_small_keys {
                     let small_key = build_plan.vertex(Op::New(AugFeature::Feature(
-                        Feature::Treasure(Treasure::SmallKey),
+                        Feature::Interior(Interior::SmallChest(Treasure::SmallKey)),
                     )));
                     if let Some(last_small_key) = last_small_key {
                         build_plan.arc(small_key, last_small_key);
@@ -104,15 +109,21 @@ impl From<Config> for BuildPlan<AugFeature> {
             build_plan.arc(entrance, big_key);
         }
 
-        let map = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Treasure(
-            Treasure::Map,
+        let map = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Interior(
+            Interior::SmallChest(Treasure::Map),
         ))));
         if let Some(weak_wall) = build_plan.index(Op::PrependEach(AugFeature::Feature(
-            Feature::Door(Door::WeakWall),
+            Feature::Obstacle(Obstacle {
+                kind: ObstacleKind::Door(Door::WeakWall),
+                treasure: None,
+            }),
         ))) {
             let very_weak_wall = build_plan
-                .index(Op::PrependEach(AugFeature::Feature(Feature::Door(
-                    Door::VeryWeakWall,
+                .index(Op::PrependEach(AugFeature::Feature(Feature::Obstacle(
+                    Obstacle {
+                        kind: ObstacleKind::Door(Door::VeryWeakWall),
+                        treasure: None,
+                    },
                 ))))
                 .unwrap();
             build_plan.arc(very_weak_wall, weak_wall);
@@ -127,9 +138,14 @@ impl From<Config> for BuildPlan<AugFeature> {
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Obstacle {
+pub struct Obstacle {
+    kind: ObstacleKind,
+    treasure: Option<Treasure>,
+}
+
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+pub enum ObstacleKind {
     Puzzle,
-    BigChest,
     Door(Door),
 }
 
@@ -144,13 +160,13 @@ pub enum Treasure {
 }
 
 impl Treasure {
-    fn get_obstacles(self) -> &'static [Obstacle] {
+    fn get_obstacles(self) -> &'static [ObstacleKind] {
         match self {
             Treasure::NoChest => &[],
             Treasure::BigKey => &[],
             Treasure::BombBag => &[
-                Obstacle::Door(Door::WeakWall),
-                Obstacle::Door(Door::VeryWeakWall),
+                ObstacleKind::Door(Door::WeakWall),
+                ObstacleKind::Door(Door::VeryWeakWall),
             ],
             Treasure::Map => &[],
             Treasure::Compass => &[],
@@ -165,6 +181,8 @@ pub enum Interior {
     CulDeSac,
     Fairy,
     Entrance,
+    SmallChest(Treasure),
+    BigChest(Treasure),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -180,15 +198,27 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
         is_below: bool,
     ) -> FeaturePlan<Feature> {
         match tree {
-            FeaturePlan::Feature(AugFeature::Feature(Feature::Treasure(treasure)), next)
-                if is_below =>
-            {
+            FeaturePlan::Feature(
+                AugFeature::Feature(Feature::Interior(Interior::SmallChest(treasure))),
+                next,
+            ) if is_below => {
                 let next = visit(rng, *next, true);
                 if rng.gen_bool(0.5) {
-                    next.prepended(Feature::Obstacle(Obstacle::Puzzle, Some(treasure)))
+                    next.prepended(Feature::Obstacle(Obstacle {
+                        kind: ObstacleKind::Puzzle,
+                        treasure: Some(treasure),
+                    }))
                 } else {
-                    next.prepended(Feature::Treasure(treasure))
+                    next.prepended(Feature::Interior(Interior::SmallChest(treasure)))
                 }
+            }
+            FeaturePlan::Feature(AugFeature::Feature(Feature::Interior(Interior::Boss)), next) => {
+                let next = visit(rng, *next, true);
+                next.prepended(Feature::Interior(Interior::Boss))
+                    .prepended(Feature::Obstacle(Obstacle {
+                        kind: ObstacleKind::Door(Door::BigKey),
+                        treasure: None,
+                    }))
             }
             FeaturePlan::Feature(AugFeature::Feature(feature), next) => {
                 visit(rng, *next, is_below).prepended(feature)
@@ -271,7 +301,7 @@ impl Room {
 
 #[derive(Copy, Clone, Debug)]
 pub enum RoomObstacle {
-    Obstacle(Obstacle),
+    Obstacle(ObstacleKind),
     Interior(Interior),
 }
 
@@ -288,21 +318,34 @@ impl feature::Room for Room {
 
     fn add_feature(mut self, feature: Feature) -> Result<Self, (Feature, Self)> {
         match feature {
-            Feature::Treasure(treasure) if self.entrance.is_none() && self.chest.is_none() => {
+            Feature::Interior(Interior::SmallChest(treasure))
+                if self.entrance.is_none() && self.chest.is_none() =>
+            {
                 self.chest = Some(treasure);
                 if self.obstacle.is_some() {
                     self.far_side_chest = Some(false);
                 }
                 Ok(self)
             }
-            Feature::Door(Door::SmallKey) if self.entrance.is_none() => {
+            Feature::Obstacle(Obstacle {
+                kind: ObstacleKind::Door(Door::SmallKey),
+                ..
+            }) if self.entrance.is_none() => {
                 self.entrance = Some(Door::SmallKey);
                 Ok(self)
             }
-            Feature::Obstacle(obstacle, treasure)
-                if self.entrance.is_none() && self.obstacle.is_none() && self.chest.is_none() =>
-            {
-                self.obstacle = Some(RoomObstacle::Obstacle(obstacle));
+            Feature::Obstacle(Obstacle {
+                kind: ObstacleKind::Door(door),
+                treasure: None,
+            }) if self.entrance.is_none() => {
+                self.entrance = Some(door);
+                Ok(self)
+            }
+            Feature::Obstacle(Obstacle {
+                kind: ObstacleKind::Puzzle,
+                treasure,
+            }) if self.entrance.is_none() && self.obstacle.is_none() && self.chest.is_none() => {
+                self.obstacle = Some(RoomObstacle::Obstacle(ObstacleKind::Puzzle));
                 self.chest = treasure;
                 if self.chest.is_some() {
                     self.far_side_chest = Some(true);
@@ -359,9 +402,12 @@ where
                     feature,
                     AugFeature::Feature(
                         Feature::Interior(Interior::Boss)
-                            | Feature::Treasure(Treasure::BigKey)
-                            | Feature::Obstacle(Obstacle::BigChest, _)
-                            | Feature::Obstacle(_, Some(Treasure::BigKey))
+                            | Feature::Interior(Interior::BigChest(_))
+                            | Feature::Interior(Interior::SmallChest(Treasure::BigKey))
+                            | Feature::Obstacle(Obstacle {
+                                treasure: Some(Treasure::BigKey),
+                                ..
+                            })
                     )
                 )
             }

@@ -1,6 +1,16 @@
 use std::fmt;
 use std::fmt::Debug;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Feature<I, O>
+where
+    I: Debug + Eq,
+    O: Debug + Eq,
+{
+    Interior(I),
+    Obstacle(O),
+}
+
 #[derive(Clone)]
 pub enum FeaturePlan<F> {
     Feature(F, Box<FeaturePlan<F>>),
@@ -17,20 +27,6 @@ where
             FeaturePlan::Branch(nodes) => nodes.fmt(f),
         }
     }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Feature<I, T, O, D>
-where
-    I: Debug + Eq,
-    T: Debug + Eq,
-    O: Debug + Eq,
-    D: Debug + Eq,
-{
-    Interior(I),
-    Treasure(T),
-    Obstacle(O, Option<T>),
-    Door(D),
 }
 
 impl<F> FeaturePlan<F> {
