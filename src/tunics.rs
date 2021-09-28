@@ -200,14 +200,14 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
 }
 
 #[derive(Clone, Debug)]
-pub enum Lock {
+pub enum Door {
     SmallKey,
     BigKey,
 }
 
 #[derive(Clone)]
 pub struct Room {
-    pub entrance: Option<Lock>,
+    pub entrance: Option<Door>,
     pub exits: Vec<Room>,
     pub chest: Option<Treasure>,
     pub obstacle: Option<Obstacle>,
@@ -279,7 +279,7 @@ impl feature::Room for Room {
                 if self.entrance.is_none() && self.chest.is_none() && self.obstacle.is_none() =>
             {
                 self.obstacle = Some(Obstacle::Boss);
-                self.entrance = Some(Lock::BigKey);
+                self.entrance = Some(Door::BigKey);
                 Ok(self)
             }
             Feature::Obstacle(obstacle) if self.entrance.is_none() && self.obstacle.is_none() => {
@@ -311,7 +311,7 @@ impl feature::Room for Room {
                 Ok(self)
             }
             Feature::SmallKeyDoor if self.entrance.is_none() => {
-                self.entrance = Some(Lock::SmallKey);
+                self.entrance = Some(Door::SmallKey);
                 Ok(self)
             }
             Feature::Entrance
