@@ -19,6 +19,20 @@ where
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Feature<I, T, O, D>
+where
+    I: Debug + Eq,
+    T: Debug + Eq,
+    O: Debug + Eq,
+    D: Debug + Eq,
+{
+    Interior(I),
+    Treasure(T),
+    Obstacle(O, Option<T>),
+    Door(D),
+}
+
 impl<F> FeaturePlan<F> {
     pub fn new() -> Self {
         FeaturePlan::Branch(Vec::new())
