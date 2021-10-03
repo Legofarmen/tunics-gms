@@ -211,21 +211,15 @@ where
 
 impl<A: Debug> BuildPlan<A> {
     pub fn show(&self) {
-        for index in self.sorted() {
-            let mut outgoing: Vec<_> = self
-                .outgoing
-                .get(&index)
-                .iter()
-                .flat_map(|indices| indices.iter())
-                .map(|index| format!("{}", index.0))
-                .collect();
-            outgoing.sort();
-            eprintln!(
-                "{}. {:?} ({})",
-                index.0,
-                self.steps[index.0],
-                outgoing.join(", ")
-            );
+        println!("digraph {{");
+        for (i, op) in self.steps.iter().enumerate() {
+            println!("step{} [label=\"{:?}\"];", i, op);
         }
+        for (source, targets) in &self.outgoing {
+            for target in targets {
+                println!("step{} -> step{};", source.0, target.0);
+            }
+        }
+        println!("}}");
     }
 }
