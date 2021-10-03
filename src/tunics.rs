@@ -9,6 +9,29 @@ const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
 const MAX_WIDTH: usize = 3;
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum Door {
+    DungeonEntrance,
+    SmallKeyLock,
+    BigKeyLock,
+
+    /// A wall that you can bomb through.
+    /// Visible on the map but invisible to the eye.
+    WeakWall,
+
+    /// A wall that you can bomb through.
+    /// Visible both on the map and to the eye.
+    VeryWeakWall,
+
+    /// Opens when the parent room is activated.
+    ActivationLock,
+
+    /// When the hero enters through it, all doors in the inner room is shut
+    /// around the player.
+    /// The doors open when the room is activated.
+    Trap,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Feature {
     Interior(Interior),
@@ -80,7 +103,7 @@ impl From<Config> for BuildPlan<AugFeature> {
         for i in 0..config.num_small_keys {
             let locked_door = build_plan.vertex(Op::PrependOne(AugFeature::Feature(
                 Feature::Obstacle(Obstacle {
-                    kind: ObstacleKind::Door(Door::SmallKey),
+                    kind: ObstacleKind::Door(Door::SmallKeyLock),
                     treasure: None,
                 }),
             )));
@@ -148,29 +171,42 @@ pub struct Obstacle {
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub enum ObstacleKind {
+    Chasm,
+    Mote,
+    Rubble,
+    ArrowChallenge,
+    FireChallenge,
     Puzzle,
     Door(Door),
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Treasure {
-    NoChest,
+    SmallKey,
     BigKey,
-    BombBag,
     Map,
     Compass,
-    SmallKey,
+    BombBag,
+    Bow,
+    Glove,
+    Lantern,
+    Grapple,
+    Flippers,
 }
 
 impl Treasure {
     fn get_obstacles(self) -> &'static [ObstacleKind] {
         match self {
-            Treasure::NoChest => &[],
             Treasure::BigKey => &[],
             Treasure::BombBag => &[
                 ObstacleKind::Door(Door::WeakWall),
                 ObstacleKind::Door(Door::VeryWeakWall),
             ],
+            Treasure::Glove => &[ObstacleKind::Rubble],
+            Treasure::Grapple => &[ObstacleKind::Chasm],
+            Treasure::Flippers => &[ObstacleKind::Mote],
+            Treasure::Bow => &[ObstacleKind::ArrowChallenge],
+            Treasure::Lantern => &[ObstacleKind::FireChallenge],
             Treasure::Map => &[],
             Treasure::Compass => &[],
             Treasure::SmallKey => &[],
@@ -219,7 +255,7 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
                 let next = visit(rng, *next, true);
                 next.prepended(Feature::Interior(Interior::Boss))
                     .prepended(Feature::Obstacle(Obstacle {
-                        kind: ObstacleKind::Door(Door::BigKey),
+                        kind: ObstacleKind::Door(Door::BigKeyLock),
                         treasure: None,
                     }))
             }
@@ -237,67 +273,19 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
     visit(rng, feature_plan, false)
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Door {
-    SmallKey,
-    BigKey,
-    WeakWall,
-    VeryWeakWall,
-}
-
 pub mod room {
+    use super::Door;
     use super::Feature;
     use super::Interior;
     use super::Obstacle;
     use super::ObstacleKind;
+    use super::Treasure;
     use crate::core::feature;
 
     pub struct Room {
-        pub entrance: Option<MyDoor>,
+        pub entrance: Option<Door>,
         pub contents: Option<Contents>,
         pub exits: Vec<Room>,
-    }
-
-    use super::Treasure;
-    /* TODO
-    #[derive(Debug)]
-    pub enum Treasure {
-        SmallKey,
-        BigKey,
-        Map,
-        Compass,
-        BombBag,
-        Bow,
-        Glove,
-        Lantern,
-        Grapple,
-        Flippers,
-    }
-    */
-
-    use super::Door; // TODO
-
-    #[derive(Debug, Eq, PartialEq)]
-    pub enum MyDoor {
-        DungeonEntrance,
-        SmallKeyLock,
-        BigKeyLock,
-
-        /// A wall that you can bomb through.
-        /// Visible on the map but invisible to the eye.
-        WeakWall,
-
-        /// A wall that you can bomb through.
-        /// Visible both on the map and to the eye.
-        VeryWeakWall,
-
-        /// Opens when the parent room is activated.
-        ActivationLock,
-
-        /// When the hero enters through it, all doors in the inner room is shut
-        /// around the player.
-        /// The doors open when the room is activated.
-        Trap,
     }
 
     #[derive(Debug, Eq, PartialEq)]
@@ -334,17 +322,6 @@ pub mod room {
 
         /// Lets the hero activate the room by succeeding in combat.
         CombatChallenge,
-    }
-
-    impl From<Door> for MyDoor {
-        fn from(door: Door) -> Self {
-            match door {
-                Door::SmallKey => MyDoor::SmallKeyLock,
-                Door::BigKey => MyDoor::BigKeyLock,
-                Door::WeakWall => MyDoor::WeakWall,
-                Door::VeryWeakWall => MyDoor::VeryWeakWall,
-            }
-        }
     }
 
     impl From<Interior> for Contents {
@@ -411,10 +388,10 @@ pub mod room {
                     Ok(self)
                 }
                 Feature::Obstacle(Obstacle {
-                    kind: ObstacleKind::Door(Door::SmallKey),
+                    kind: ObstacleKind::Door(Door::SmallKeyLock),
                     ..
                 }) if self.entrance.is_none() => {
-                    self.entrance = Some(MyDoor::SmallKeyLock);
+                    self.entrance = Some(Door::SmallKeyLock);
                     Ok(self)
                 }
                 Feature::Obstacle(Obstacle {
@@ -433,10 +410,53 @@ pub mod room {
                     ));
                     Ok(self)
                 }
+                Feature::Obstacle(Obstacle {
+                    kind: ObstacleKind::Chasm,
+                    treasure: None,
+                }) if self.entrance.is_none() && self.contents.is_none() => {
+                    self.contents = Some(Contents::Chasm);
+                    Ok(self)
+                }
+                Feature::Obstacle(Obstacle {
+                    kind: ObstacleKind::Mote,
+                    treasure: None,
+                }) if self.entrance.is_none() && self.contents.is_none() => {
+                    self.contents = Some(Contents::Mote);
+                    Ok(self)
+                }
+                Feature::Obstacle(Obstacle {
+                    kind: ObstacleKind::Rubble,
+                    treasure: None,
+                }) if self.entrance.is_none() && self.contents.is_none() => {
+                    self.contents = Some(Contents::Rubble);
+                    Ok(self)
+                }
+                Feature::Obstacle(Obstacle {
+                    kind: ObstacleKind::ArrowChallenge,
+                    treasure: None,
+                }) if self.entrance.is_none() => {
+                    self.entrance = Some(Door::ActivationLock);
+                    Ok(Room {
+                        entrance: None,
+                        contents: Some(Contents::ArrowChallenge),
+                        exits: vec![self],
+                    })
+                }
+                Feature::Obstacle(Obstacle {
+                    kind: ObstacleKind::FireChallenge,
+                    treasure: None,
+                }) if self.entrance.is_none() => {
+                    self.entrance = Some(Door::ActivationLock);
+                    Ok(Room {
+                        entrance: None,
+                        contents: Some(Contents::FireChallenge),
+                        exits: vec![self],
+                    })
+                }
                 Feature::Interior(Interior::Entrance)
                     if self.entrance.is_none() && self.contents.is_none() =>
                 {
-                    self.entrance = Some(MyDoor::DungeonEntrance);
+                    self.entrance = Some(Door::DungeonEntrance);
                     Ok(self)
                 }
                 Feature::Interior(interior)

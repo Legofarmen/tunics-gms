@@ -300,7 +300,7 @@ fn main() {
         num_fairies: 0,
         num_cul_de_sacs: 0,
         num_small_keys: 1,
-        treasures: [Treasure::BombBag].iter().cloned().collect(),
+        treasures: [Treasure::Lantern].iter().cloned().collect(),
         //treasures: [].iter().cloned().collect(),
     })
     //.check(|build_plan| build_plan.show())
