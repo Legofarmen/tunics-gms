@@ -266,13 +266,13 @@ fn main() {
     use crate::core::build::BuildPlan;
     use crate::core::feature::FeaturePlan;
     use crate::core::feature::Room as _;
+    use crate::tunics::gen_treasure_set;
     use crate::tunics::get_join_selector;
     use crate::tunics::get_prepend_selector;
     use crate::tunics::get_traversal_selector;
     use crate::tunics::lower;
     use crate::tunics::room::Room;
     use crate::tunics::Config;
-    use crate::tunics::Treasure;
     use layout::Layout;
     use rand::rngs::StdRng;
     use rand::rngs::ThreadRng;
@@ -300,8 +300,7 @@ fn main() {
         num_fairies: 0,
         num_cul_de_sacs: 0,
         num_small_keys: 1,
-        treasures: [Treasure::Lantern].iter().cloned().collect(),
-        //treasures: [].iter().cloned().collect(),
+        treasures: gen_treasure_set(&mut rng, 1),
     })
     //.check(|build_plan| build_plan.show())
     //;

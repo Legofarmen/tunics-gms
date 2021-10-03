@@ -38,6 +38,22 @@ pub enum Feature {
     Obstacle(Obstacle),
 }
 
+pub fn gen_treasure_set<R: Rng>(rng: &mut R, n: usize) -> HashSet<Treasure> {
+    let mut all_treasures = vec![
+        Treasure::BombBag,
+        Treasure::Bow,
+        Treasure::Grapple,
+        Treasure::Glove,
+        Treasure::Lantern,
+        Treasure::Flippers,
+    ];
+    let mut treasures = HashSet::new();
+    for _ in 0..n {
+        treasures.insert(all_treasures.swap_remove(rng.gen_range(0..all_treasures.len())));
+    }
+    treasures
+}
+
 pub struct Config {
     pub num_small_keys: usize,
     pub num_fairies: usize,
