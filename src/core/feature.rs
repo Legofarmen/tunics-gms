@@ -1,16 +1,6 @@
 use std::fmt;
 use std::fmt::Debug;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Feature<I, O>
-where
-    I: Debug + Eq,
-    O: Debug + Eq,
-{
-    Interior(I),
-    Obstacle(O),
-}
-
 #[derive(Clone)]
 pub enum FeaturePlan<F> {
     Feature(F, Box<FeaturePlan<F>>),

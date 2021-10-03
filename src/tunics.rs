@@ -10,7 +10,11 @@ const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
 const MAX_WIDTH: usize = 3;
 
-type Feature = feature::Feature<Interior, Obstacle>;
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Feature {
+    Interior(Interior),
+    Obstacle(Obstacle),
+}
 
 pub struct Config {
     pub num_small_keys: usize,
