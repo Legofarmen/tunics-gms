@@ -241,6 +241,7 @@ mod layout {
         }
         let desc = room_label(&room);
         layout.add_room((depth, lane0), desc);
+        room.exits.sort_by_key(Room::weight);
         let last_exit = room.exits.pop();
         for child in room.exits {
             let old_child = depth;

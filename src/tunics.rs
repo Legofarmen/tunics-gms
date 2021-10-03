@@ -364,6 +364,26 @@ pub mod room {
     }
 
     impl Room {
+        pub fn is_simple(&self) -> bool {
+            use Contents::*;
+            self.contents
+                .as_ref()
+                .map(|contents| {
+                    matches!(
+                        contents,
+                        Empty | Boss | Fairy | SmallChest(_) | BigChest(_) | SecretChest(_)
+                    )
+                })
+                .unwrap_or(false)
+        }
+
+        pub fn weight(&self) -> usize {
+            self.exits
+                .iter()
+                .map(Room::weight)
+                .fold(1, |acc, weight| acc + weight)
+        }
+
         pub fn show(&self) {
             fn visit(room: &Room, parent: usize, id: usize) -> usize {
                 let mut next = id + 1;
