@@ -18,7 +18,7 @@ impl<T> Check<T> for T {
 }
 
 mod layout {
-    use crate::tunics::Room;
+    use crate::tunics::room::Room;
     use std::collections::HashMap;
 
     #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -228,26 +228,10 @@ mod layout {
     }
     pub fn walk(layout: &mut Layout, mut room: Room, mut depth: i8, lane0: i8) -> i8 {
         fn room_label(room: &Room) -> String {
-            let obstacle = room
-                .obstacle
-                .map(|o| format!("{:?}", o))
-                .unwrap_or_else(String::new);
-            let (near_chest, far_chest) = if room.far_side_chest == Some(true) {
-                (
-                    String::new(),
-                    room.chest
-                        .map(|t| format!("{:?}", t))
-                        .unwrap_or_else(String::new),
-                )
-            } else {
-                (
-                    room.chest
-                        .map(|t| format!("{:?}", t))
-                        .unwrap_or_else(String::new),
-                    String::new(),
-                )
-            };
-            format!("{{{}|{}|{}}}", far_chest, obstacle, near_chest)
+            room.contents
+                .as_ref()
+                .map(|contents| format!("{:?}", contents))
+                .unwrap_or_else(|| "".to_string())
         }
         fn entrance_label(room: &Room) -> String {
             room.entrance
@@ -286,8 +270,8 @@ fn main() {
     use crate::tunics::get_prepend_selector;
     use crate::tunics::get_traversal_selector;
     use crate::tunics::lower;
+    use crate::tunics::room::Room;
     use crate::tunics::Config;
-    use crate::tunics::Room;
     use crate::tunics::Treasure;
     use layout::Layout;
     use rand::rngs::StdRng;

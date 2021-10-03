@@ -1,6 +1,5 @@
 use crate::core::build::BuildPlan;
 use crate::core::build::Index;
-use crate::core::feature;
 use crate::core::feature::FeaturePlan;
 use crate::core::feature::Op;
 use rand::Rng;
@@ -207,14 +206,14 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
                 next,
             ) if is_below => {
                 let next = visit(rng, *next, true);
-                if rng.gen_bool(0.5) {
-                    next.prepended(Feature::Obstacle(Obstacle {
-                        kind: ObstacleKind::Puzzle,
-                        treasure: Some(treasure),
-                    }))
-                } else {
-                    next.prepended(Feature::Interior(Interior::SmallChest(treasure)))
-                }
+                //if rng.gen_bool(0.5) {
+                next.prepended(Feature::Obstacle(Obstacle {
+                    kind: ObstacleKind::Puzzle,
+                    treasure: Some(treasure),
+                }))
+                //} else {
+                //next.prepended(Feature::Interior(Interior::SmallChest(treasure)))
+                //}
             }
             FeaturePlan::Feature(AugFeature::Feature(Feature::Interior(Interior::Boss)), next) => {
                 let next = visit(rng, *next, true);
@@ -246,123 +245,208 @@ pub enum Door {
     VeryWeakWall,
 }
 
-#[derive(Clone)]
-pub struct Room {
-    pub entrance: Option<Door>,
-    pub exits: Vec<Room>,
-    pub chest: Option<Treasure>,
-    pub obstacle: Option<RoomObstacle>,
-    pub far_side_chest: Option<bool>,
-}
+pub mod room {
+    use super::Feature;
+    use super::Interior;
+    use super::Obstacle;
+    use super::ObstacleKind;
+    use crate::core::feature;
 
-impl Default for Room {
-    fn default() -> Self {
-        Room {
-            entrance: None,
-            exits: Vec::new(),
-            chest: None,
-            obstacle: None,
-            far_side_chest: None,
+    pub struct Room {
+        pub entrance: Option<MyDoor>,
+        pub contents: Option<Contents>,
+        pub exits: Vec<Room>,
+    }
+
+    use super::Treasure;
+    /* TODO
+    #[derive(Debug)]
+    pub enum Treasure {
+        SmallKey,
+        BigKey,
+        Map,
+        Compass,
+        BombBag,
+        Bow,
+        Glove,
+        Lantern,
+        Grapple,
+        Flippers,
+    }
+    */
+
+    use super::Door; // TODO
+
+    #[derive(Debug, Eq, PartialEq)]
+    pub enum MyDoor {
+        DungeonEntrance,
+        SmallKeyLock,
+        BigKeyLock,
+
+        /// A wall that you can bomb through.
+        /// Visible on the map but invisible to the eye.
+        WeakWall,
+
+        /// A wall that you can bomb through.
+        /// Visible both on the map and to the eye.
+        VeryWeakWall,
+
+        /// Opens when the parent room is activated.
+        ActivationLock,
+
+        /// When the hero enters through it, all doors in the inner room is shut
+        /// around the player.
+        /// The doors open when the room is activated.
+        Trap,
+    }
+
+    #[derive(Debug, Eq, PartialEq)]
+    pub enum Contents {
+        Empty,
+        Boss,
+        Fairy,
+        SmallChest(Treasure),
+        BigChest(Treasure),
+
+        /// Appears when the hero finds a secret.
+        SecretChest(Treasure),
+
+        /// An obstacle the hero needs to swim across.
+        /// The entrance is on the near side, and all exits on the far side.
+        Mote,
+
+        /// An obstacle the hero needs to grapple across.
+        /// The entrance is on the near side, and all exits on the far side.
+        Chasm,
+
+        /// An obstacle the hero needs great plysical strength to cross.
+        /// The entrance is on the near side, and all exits on the far side.
+        Rubble,
+
+        /// The room is activated by shoot with an arrow to open.
+        ArrowChallenge,
+
+        /// Lets the hero activate the room by use of strength.
+        StrengthChallenge,
+
+        /// Lets the hero activate the room by use of fire.
+        FireChallenge,
+
+        /// Lets the hero activate the room by succeeding in combat.
+        CombatChallenge,
+    }
+
+    impl From<Door> for MyDoor {
+        fn from(door: Door) -> Self {
+            match door {
+                Door::SmallKey => MyDoor::SmallKeyLock,
+                Door::BigKey => MyDoor::BigKeyLock,
+                Door::WeakWall => MyDoor::WeakWall,
+                Door::VeryWeakWall => MyDoor::VeryWeakWall,
+            }
         }
     }
-}
 
-impl Room {
-    pub fn show(&self) {
-        fn visit(indent: usize, room: &Room) {
-            let lock = if let Some(lock) = &room.entrance {
-                format!("{:?}", lock)
-            } else {
-                "".to_string()
-            };
-            let side = match room.far_side_chest {
-                Some(true) => "beyond",
-                Some(false) => "in front of",
-                None => "",
-            };
-            eprintln!(
-                "{:indent$}* {}:{}:{}:{}",
-                "",
-                lock,
-                room.chest
-                    .as_ref()
-                    .map(|v| format!("{:?}", v))
-                    .unwrap_or_else(|| "".to_string()),
-                side,
-                room.obstacle
-                    .as_ref()
-                    .map(|v| format!("{:?}", v))
-                    .unwrap_or_else(|| "".to_string()),
-                indent = indent
-            );
-            for exit in &room.exits {
-                visit(indent + 2, exit);
+    impl From<Interior> for Contents {
+        fn from(interior: Interior) -> Self {
+            match interior {
+                Interior::Boss => Contents::Boss,
+                Interior::CulDeSac => Contents::Empty,
+                Interior::Fairy => Contents::Fairy,
+                Interior::Entrance => unimplemented!(),
+                Interior::SmallChest(treasure) => Contents::SmallChest(treasure.into()),
+                Interior::BigChest(treasure) => Contents::BigChest(treasure.into()),
             }
         }
-        visit(0, self);
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum RoomObstacle {
-    Obstacle(ObstacleKind),
-    Interior(Interior),
-}
-
-impl feature::Room for Room {
-    type Feature = Feature;
-
-    fn add_exits<I>(mut self, exits: I) -> Self
-    where
-        I: IntoIterator<Item = Self>,
-    {
-        self.exits.extend(exits);
-        self
     }
 
-    fn add_feature(mut self, feature: Feature) -> Result<Self, (Feature, Self)> {
-        match feature {
-            Feature::Interior(Interior::SmallChest(treasure))
-                if self.entrance.is_none() && self.chest.is_none() =>
-            {
-                self.chest = Some(treasure);
-                if self.obstacle.is_some() {
-                    self.far_side_chest = Some(false);
+    impl Default for Room {
+        fn default() -> Self {
+            Room {
+                entrance: None,
+                contents: None,
+                exits: vec![],
+            }
+        }
+    }
+
+    impl Room {
+        pub fn show(&self) {
+            fn visit(room: &Room, parent: usize, id: usize) -> usize {
+                let mut next = id + 1;
+                for child in &room.exits {
+                    next = visit(child, id, next);
                 }
-                Ok(self)
+                let door = match &room.entrance {
+                    None => "".to_string(),
+                    Some(door) => format!("{:?}", door),
+                };
+                println!("room{} [label=\"{:?}\"];", id, room.contents);
+                println!("room{} -- room{} [label=\"{}\"];", parent, id, door);
+                next
             }
-            Feature::Obstacle(Obstacle {
-                kind: ObstacleKind::Door(Door::SmallKey),
-                ..
-            }) if self.entrance.is_none() => {
-                self.entrance = Some(Door::SmallKey);
-                Ok(self)
-            }
-            Feature::Obstacle(Obstacle {
-                kind: ObstacleKind::Door(door),
-                treasure: None,
-            }) if self.entrance.is_none() => {
-                self.entrance = Some(door);
-                Ok(self)
-            }
-            Feature::Obstacle(Obstacle {
-                kind: ObstacleKind::Puzzle,
-                treasure,
-            }) if self.entrance.is_none() && self.obstacle.is_none() && self.chest.is_none() => {
-                self.obstacle = Some(RoomObstacle::Obstacle(ObstacleKind::Puzzle));
-                self.chest = treasure;
-                if self.chest.is_some() {
-                    self.far_side_chest = Some(true);
+            println!("graph {{");
+            visit(self, 0, 0);
+            println!("}}");
+        }
+    }
+
+    impl feature::Room for Room {
+        type Feature = Feature;
+
+        fn add_exits<I>(mut self, exits: I) -> Self
+        where
+            I: IntoIterator<Item = Self>,
+        {
+            self.exits.extend(exits);
+            self
+        }
+
+        fn add_feature(mut self, feature: Feature) -> Result<Self, (Feature, Self)> {
+            match feature {
+                Feature::Interior(Interior::SmallChest(treasure))
+                    if self.entrance.is_none() && self.contents.is_none() =>
+                {
+                    self.contents = Some(Contents::SmallChest(treasure));
+                    Ok(self)
                 }
-                Ok(self)
+                Feature::Obstacle(Obstacle {
+                    kind: ObstacleKind::Door(Door::SmallKey),
+                    ..
+                }) if self.entrance.is_none() => {
+                    self.entrance = Some(MyDoor::SmallKeyLock);
+                    Ok(self)
+                }
+                Feature::Obstacle(Obstacle {
+                    kind: ObstacleKind::Door(door),
+                    treasure: None,
+                }) if self.entrance.is_none() => {
+                    self.entrance = Some(door.into());
+                    Ok(self)
+                }
+                Feature::Obstacle(Obstacle {
+                    kind: ObstacleKind::Puzzle,
+                    treasure,
+                }) if self.entrance.is_none() && self.contents.is_none() => {
+                    self.contents = Some(Contents::SecretChest(
+                        treasure.expect("puzzle must have a treasure").into(),
+                    ));
+                    Ok(self)
+                }
+                Feature::Interior(Interior::Entrance)
+                    if self.entrance.is_none() && self.contents.is_none() =>
+                {
+                    self.entrance = Some(MyDoor::DungeonEntrance);
+                    Ok(self)
+                }
+                Feature::Interior(interior)
+                    if self.entrance.is_none() && self.contents.is_none() =>
+                {
+                    self.contents = Some(interior.into());
+                    Ok(self)
+                }
+                _ => Err((feature, self)),
             }
-            Feature::Interior(interior)
-                if self.entrance.is_none() && self.chest.is_none() && self.obstacle.is_none() =>
-            {
-                self.obstacle = Some(RoomObstacle::Interior(interior));
-                Ok(self)
-            }
-            _ => Err((feature, self)),
         }
     }
 }
