@@ -1,8 +1,15 @@
 pub mod core;
 pub mod tunics;
 
+use crate::core::build::BuildPlan;
+use crate::core::feature::FeaturePlan;
+use crate::core::feature::Room as _;
+use crate::tunics::room::Room;
+use crate::tunics::AugFeature;
+use crate::tunics::Feature;
 use crate::tunics::Item;
-use std::str::FromStr;
+use layout::Layout;
+use rand::Rng;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -33,43 +40,6 @@ enum Command {
     FeaturePlan2,
     RoomPlan,
     FloorPlan,
-}
-
-impl Default for Command {
-    fn default() -> Self {
-        Command::FloorPlan
-    }
-}
-
-impl FromStr for Item {
-    type Err = &'static str;
-    fn from_str(s: &str) -> Result<Item, Self::Err> {
-        match s {
-            "bomb-bag" => Ok(Item::BombBag),
-            "bow" => Ok(Item::Bow),
-            "flippers" => Ok(Item::Flippers),
-            "glove" => Ok(Item::Glove),
-            "grapple" => Ok(Item::Grapple),
-            "lantern" => Ok(Item::Lantern),
-            _ => Err("invalid item"),
-        }
-    }
-}
-
-trait Check<T> {
-    fn check<F>(self, f: F) -> T
-    where
-        F: Fn(&T);
-}
-
-impl<T> Check<T> for T {
-    fn check<F>(self, f: F) -> T
-    where
-        F: Fn(&T),
-    {
-        f(&self);
-        self
-    }
 }
 
 mod layout {
@@ -317,15 +287,6 @@ mod layout {
         depth
     }
 }
-
-use crate::core::build::BuildPlan;
-use crate::core::feature::FeaturePlan;
-use crate::core::feature::Room as _;
-use crate::tunics::room::Room;
-use crate::tunics::AugFeature;
-use crate::tunics::Feature;
-use layout::Layout;
-use rand::Rng;
 
 fn build_plan(seed: u64, opt: Opt) -> (impl Rng, BuildPlan<AugFeature>) {
     use crate::tunics::gen_treasure_set;

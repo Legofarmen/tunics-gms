@@ -4,6 +4,7 @@ use crate::core::feature::FeaturePlan;
 use crate::core::feature::Op;
 use rand::Rng;
 use std::collections::HashSet;
+use std::str::FromStr;
 
 const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
@@ -213,6 +214,21 @@ pub enum Item {
     Glove,
     Grapple,
     Lantern,
+}
+
+impl FromStr for Item {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Item, Self::Err> {
+        match s {
+            "bomb-bag" => Ok(Item::BombBag),
+            "bow" => Ok(Item::Bow),
+            "flippers" => Ok(Item::Flippers),
+            "glove" => Ok(Item::Glove),
+            "grapple" => Ok(Item::Grapple),
+            "lantern" => Ok(Item::Lantern),
+            _ => Err("invalid item"),
+        }
+    }
 }
 
 impl Item {
