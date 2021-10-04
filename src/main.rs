@@ -1,6 +1,8 @@
 pub mod core;
 pub mod tunics;
 
+use crate::tunics::Item;
+use std::str::FromStr;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -38,31 +40,6 @@ impl Default for Command {
         Command::FloorPlan
     }
 }
-
-enum Item {
-    BombBag,
-    Bow,
-    Flippers,
-    Glove,
-    Grapple,
-    Lantern,
-}
-
-impl From<Item> for Treasure {
-    fn from(item: Item) -> Self {
-        match item {
-            Item::BombBag => Treasure::BombBag,
-            Item::Bow => Treasure::Bow,
-            Item::Flippers => Treasure::Flippers,
-            Item::Glove => Treasure::Glove,
-            Item::Grapple => Treasure::Grapple,
-            Item::Lantern => Treasure::Lantern,
-        }
-    }
-}
-
-use crate::tunics::Treasure;
-use std::str::FromStr;
 
 impl FromStr for Item {
     type Err = &'static str;
@@ -359,7 +336,7 @@ fn build_plan(seed: u64, opt: Opt) -> (impl Rng, BuildPlan<AugFeature>) {
     let mut rng = StdRng::seed_from_u64(seed);
     let items = opt
         .items
-        .map(|items| items.into_iter().map(Treasure::from).collect())
+        .map(|items| items.into_iter().collect())
         .unwrap_or_else(|| gen_treasure_set(&mut rng, 1));
     (
         rng,
@@ -367,7 +344,7 @@ fn build_plan(seed: u64, opt: Opt) -> (impl Rng, BuildPlan<AugFeature>) {
             num_fairies: opt.fairies,
             num_cul_de_sacs: opt.cul_de_sacs,
             num_small_keys: opt.small_keys,
-            treasures: items,
+            items,
         }),
     )
 }

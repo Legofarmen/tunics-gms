@@ -38,14 +38,14 @@ pub enum Feature {
     Obstacle(Obstacle),
 }
 
-pub fn gen_treasure_set<R: Rng>(rng: &mut R, n: usize) -> HashSet<Treasure> {
+pub fn gen_treasure_set<R: Rng>(rng: &mut R, n: usize) -> HashSet<Item> {
     let mut all_treasures = vec![
-        Treasure::BombBag,
-        Treasure::Bow,
-        Treasure::Grapple,
-        Treasure::Glove,
-        Treasure::Lantern,
-        Treasure::Flippers,
+        Item::BombBag,
+        Item::Bow,
+        Item::Grapple,
+        Item::Glove,
+        Item::Lantern,
+        Item::Flippers,
     ];
     let mut treasures = HashSet::new();
     for _ in 0..n {
@@ -58,7 +58,7 @@ pub struct Config {
     pub num_small_keys: usize,
     pub num_fairies: usize,
     pub num_cul_de_sacs: usize,
-    pub treasures: HashSet<Treasure>,
+    pub items: HashSet<Item>,
 }
 
 impl From<Config> for BuildPlan<AugFeature> {
@@ -98,12 +98,12 @@ impl From<Config> for BuildPlan<AugFeature> {
         build_plan.arc(compass, hide_chests);
         build_plan.arc(entrance, compass);
 
-        for treasure in &config.treasures {
+        for item in &config.items {
             let big_chest = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Interior(
-                Interior::BigChest(*treasure),
+                Interior::BigChest(*item),
             ))));
             build_plan.arc(big_key, big_chest);
-            for obstacle in treasure.get_obstacles() {
+            for obstacle in item.get_obstacles() {
                 let obstacle = build_plan.vertex(Op::PrependEach(AugFeature::Feature(
                     Feature::Obstacle(Obstacle {
                         kind: *obstacle,
@@ -202,30 +202,31 @@ pub enum Treasure {
     BigKey,
     Map,
     Compass,
-    BombBag,
-    Bow,
-    Glove,
-    Lantern,
-    Grapple,
-    Flippers,
+    Item(Item),
 }
 
-impl Treasure {
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+pub enum Item {
+    BombBag,
+    Bow,
+    Flippers,
+    Glove,
+    Grapple,
+    Lantern,
+}
+
+impl Item {
     fn get_obstacles(self) -> &'static [ObstacleKind] {
         match self {
-            Treasure::BigKey => &[],
-            Treasure::BombBag => &[
+            Item::BombBag => &[
                 ObstacleKind::Door(Door::WeakWall),
                 ObstacleKind::Door(Door::VeryWeakWall),
             ],
-            Treasure::Glove => &[ObstacleKind::Rubble],
-            Treasure::Grapple => &[ObstacleKind::Chasm],
-            Treasure::Flippers => &[ObstacleKind::Mote],
-            Treasure::Bow => &[ObstacleKind::ArrowChallenge],
-            Treasure::Lantern => &[ObstacleKind::FireChallenge],
-            Treasure::Map => &[],
-            Treasure::Compass => &[],
-            Treasure::SmallKey => &[],
+            Item::Glove => &[ObstacleKind::Rubble],
+            Item::Grapple => &[ObstacleKind::Chasm],
+            Item::Flippers => &[ObstacleKind::Mote],
+            Item::Bow => &[ObstacleKind::ArrowChallenge],
+            Item::Lantern => &[ObstacleKind::FireChallenge],
         }
     }
 }
@@ -237,7 +238,7 @@ pub enum Interior {
     Fairy,
     Entrance,
     SmallChest(Treasure),
-    BigChest(Treasure),
+    BigChest(Item),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -293,6 +294,7 @@ pub mod room {
     use super::Door;
     use super::Feature;
     use super::Interior;
+    use super::Item;
     use super::Obstacle;
     use super::ObstacleKind;
     use super::Treasure;
@@ -310,7 +312,7 @@ pub mod room {
         Boss,
         Fairy,
         SmallChest(Treasure),
-        BigChest(Treasure),
+        BigChest(Item),
 
         /// Appears when the hero finds a secret.
         SecretChest(Treasure),
