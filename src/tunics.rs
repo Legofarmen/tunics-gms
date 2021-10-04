@@ -37,7 +37,6 @@ pub enum Door {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Feature {
     Door(Door),
-    Entrance,
     Interior(Contents),
     Obstacle(Obstacle),
 }
@@ -68,8 +67,9 @@ pub struct Config {
 impl From<Config> for BuildPlan<AugFeature> {
     fn from(config: Config) -> BuildPlan<AugFeature> {
         let mut build_plan = BuildPlan::new();
-        let entrance =
-            build_plan.vertex(Op::PrependGrouped(AugFeature::Feature(Feature::Entrance)));
+        let entrance = build_plan.vertex(Op::PrependGrouped(AugFeature::Feature(Feature::Door(
+            Door::DungeonEntrance,
+        ))));
 
         for _ in 0..config.num_cul_de_sacs {
             let cul_de_sac = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Interior(
@@ -449,7 +449,9 @@ pub mod room {
                         exits: vec![self],
                     })
                 }
-                Feature::Entrance if self.entrance.is_none() && self.contents.is_none() => {
+                Feature::Door(Door::DungeonEntrance)
+                    if self.entrance.is_none() && self.contents.is_none() =>
+                {
                     self.entrance = Some(Door::DungeonEntrance);
                     Ok(self)
                 }
