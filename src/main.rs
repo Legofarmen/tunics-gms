@@ -1,6 +1,84 @@
 pub mod core;
 pub mod tunics;
 
+use structopt::StructOpt;
+
+#[derive(StructOpt)]
+struct Opt {
+    /// PRNG seed
+    seed: Option<u64>,
+
+    #[structopt(long, default_value)]
+    fairies: usize,
+
+    #[structopt(long, default_value)]
+    cul_de_sacs: usize,
+
+    #[structopt(long, default_value)]
+    small_keys: usize,
+
+    #[structopt(long)]
+    items: Option<Vec<Item>>,
+
+    #[structopt(subcommand)]
+    cmd: Command,
+}
+
+#[derive(StructOpt)]
+enum Command {
+    BuildPlan,
+    FeaturePlan1,
+    FeaturePlan2,
+    RoomPlan,
+    FloorPlan,
+}
+
+impl Default for Command {
+    fn default() -> Self {
+        Command::FloorPlan
+    }
+}
+
+enum Item {
+    BombBag,
+    Bow,
+    Flippers,
+    Glove,
+    Grapple,
+    Lantern,
+}
+
+impl From<Item> for Treasure {
+    fn from(item: Item) -> Self {
+        match item {
+            Item::BombBag => Treasure::BombBag,
+            Item::Bow => Treasure::Bow,
+            Item::Flippers => Treasure::Flippers,
+            Item::Glove => Treasure::Glove,
+            Item::Grapple => Treasure::Grapple,
+            Item::Lantern => Treasure::Lantern,
+        }
+    }
+}
+
+use crate::tunics::Treasure;
+use std::str::FromStr;
+
+impl FromStr for Item {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Item, Self::Err> {
+        match s {
+            "bomb-bag" => Ok(Item::BombBag),
+            "bow" => Ok(Item::Bow),
+            "flippers" => Ok(Item::Flippers),
+            "glove" => Ok(Item::Glove),
+            "grapple" => Ok(Item::Grapple),
+            "lantern" => Ok(Item::Lantern),
+            _ => Err("invalid item"),
+        }
+    }
+}
+
 trait Check<T> {
     fn check<F>(self, f: F) -> T
     where
@@ -263,49 +341,49 @@ mod layout {
     }
 }
 
-fn main() {
-    use crate::core::build::BuildPlan;
-    use crate::core::feature::FeaturePlan;
-    use crate::core::feature::Room as _;
+use crate::core::build::BuildPlan;
+use crate::core::feature::FeaturePlan;
+use crate::core::feature::Room as _;
+use crate::tunics::room::Room;
+use crate::tunics::AugFeature;
+use crate::tunics::Feature;
+use layout::Layout;
+use rand::Rng;
+
+fn build_plan(seed: u64, opt: Opt) -> (impl Rng, BuildPlan<AugFeature>) {
     use crate::tunics::gen_treasure_set;
+    use crate::tunics::Config;
+    use rand::rngs::StdRng;
+    use rand::SeedableRng;
+
+    let mut rng = StdRng::seed_from_u64(seed);
+    let items = opt
+        .items
+        .map(|items| items.into_iter().map(Treasure::from).collect())
+        .unwrap_or_else(|| gen_treasure_set(&mut rng, 1));
+    (
+        rng,
+        BuildPlan::from(Config {
+            num_fairies: opt.fairies,
+            num_cul_de_sacs: opt.cul_de_sacs,
+            num_small_keys: opt.small_keys,
+            treasures: items,
+        }),
+    )
+}
+
+fn feature_plan1(seed: u64, opt: Opt) -> (impl Rng, FeaturePlan<AugFeature>) {
     use crate::tunics::get_join_selector;
     use crate::tunics::get_prepend_selector;
     use crate::tunics::get_traversal_selector;
-    use crate::tunics::lower;
-    use crate::tunics::room::Room;
-    use crate::tunics::Config;
-    use layout::Layout;
     use rand::rngs::StdRng;
-    use rand::rngs::ThreadRng;
-    use rand::Rng;
     use rand::SeedableRng;
-    use std::env;
-    use std::str::FromStr;
 
-    let mut args = env::args().skip(1);
-    let seed = args
-        .next()
-        .map(|s| u64::from_str(&s).expect("seed must be numeric"))
-        .unwrap_or_else(|| ThreadRng::default().gen());
-    args.next()
-        .and_then::<String, _>(|_| panic!("too many argument"));
-    eprintln!("{}", seed);
+    let (mut rng, build_plan) = build_plan(seed, opt);
 
-    let mut rng = StdRng::seed_from_u64(seed);
     let rng1 = StdRng::seed_from_u64(rng.gen());
     let rng2 = StdRng::seed_from_u64(rng.gen());
     let rng3 = StdRng::seed_from_u64(rng.gen());
-    let mut rng4 = StdRng::seed_from_u64(rng.gen());
-
-    let build_plan = BuildPlan::from(Config {
-        num_fairies: 0,
-        num_cul_de_sacs: 0,
-        num_small_keys: 1,
-        treasures: gen_treasure_set(&mut rng, 1),
-    })
-    //.check(|build_plan| build_plan.show())
-    //;
-    ;
 
     let traversal_selector = get_traversal_selector(rng1, &build_plan);
     let prepend_selector = get_prepend_selector(rng2);
@@ -315,18 +393,55 @@ fn main() {
         //.inspect(|step| eprintln!("{:?}", step))
         //;
         ;
-    let feature_plan = FeaturePlan::from_steps(join_selector, prepend_selector, build_sequence)
-        //.check(|feature_plan| feature_plan.show())
-        //;
-        ;
-    let feature_plan = lower(&mut rng4, feature_plan)
-        //.check(|feature_plan| feature_plan.show())
-        //;
-        ;
-    let room = Room::from_feature_plan(feature_plan)
-        //.check(Room::show)
-        //;
-        ;
-    let l = Layout::from_room(room);
-    l.show();
+    (
+        rng,
+        FeaturePlan::from_steps(join_selector, prepend_selector, build_sequence),
+    )
+}
+
+fn feature_plan2(seed: u64, opt: Opt) -> (impl Rng, FeaturePlan<Feature>) {
+    use crate::tunics::lower;
+    use rand::rngs::StdRng;
+    use rand::SeedableRng;
+
+    let (mut rng, feature_plan) = feature_plan1(seed, opt);
+    let mut rng4 = StdRng::seed_from_u64(rng.gen());
+
+    (rng, lower(&mut rng4, feature_plan))
+}
+
+fn room_plan(seed: u64, opt: Opt) -> (impl Rng, Room) {
+    let (rng, feature_plan) = feature_plan2(seed, opt);
+    (rng, Room::from_feature_plan(feature_plan))
+}
+
+fn floor_plan(seed: u64, opt: Opt) -> (impl Rng, Layout) {
+    let (rng, room_plan) = room_plan(seed, opt);
+    (rng, Layout::from_room(room_plan))
+}
+
+fn main() {
+    use rand::rngs::ThreadRng;
+
+    let opt = Opt::from_args();
+    let seed = opt.seed.unwrap_or_else(|| ThreadRng::default().gen());
+    eprintln!("{}", seed);
+
+    match opt.cmd {
+        Command::BuildPlan => {
+            build_plan(seed, opt).1.show();
+        }
+        Command::FeaturePlan1 => {
+            feature_plan1(seed, opt).1.show();
+        }
+        Command::FeaturePlan2 => {
+            feature_plan2(seed, opt).1.show();
+        }
+        Command::RoomPlan => {
+            room_plan(seed, opt).1.show();
+        }
+        Command::FloorPlan => {
+            floor_plan(seed, opt).1.show();
+        }
+    };
 }
