@@ -10,6 +10,12 @@ const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
 const MAX_WIDTH: usize = 3;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Feature {
+    Door(Door),
+    Room(Contents),
+}
+
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Door {
     DungeonEntrance,
@@ -31,12 +37,6 @@ pub enum Door {
     /// around the player.
     /// The doors open when the room is activated.
     Trap,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Feature {
-    Door(Door),
-    Room(Contents),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -367,70 +367,41 @@ pub mod room {
         }
 
         fn add_feature(mut self, feature: Feature) -> Result<Self, (Feature, Self)> {
+            if self.entrance.is_some() {
+                return Err((feature, self));
+            }
             match feature {
-                Feature::Room(Contents::SmallChest(treasure))
-                    if self.entrance.is_none() && self.contents.is_none() =>
-                {
-                    self.contents = Some(Contents::SmallChest(treasure));
+                Feature::Door(door) => {
+                    if matches!(door, Door::DungeonEntrance) && self.contents.is_some() {
+                        Err((feature, self))
+                    } else {
+                        self.entrance = Some(door);
+                        Ok(self)
+                    }
+                }
+                Feature::Room(
+                    contents @ Contents::BigChest(_)
+                    | contents @ Contents::Boss
+                    | contents @ Contents::Chasm
+                    | contents @ Contents::Empty
+                    | contents @ Contents::Fairy
+                    | contents @ Contents::Mote
+                    | contents @ Contents::Rubble
+                    | contents @ Contents::SecretChest(_)
+                    | contents @ Contents::SmallChest(_),
+                ) if self.contents.is_none() => {
+                    self.contents = Some(contents);
                     Ok(self)
                 }
-                Feature::Door(Door::SmallKeyLock) if self.entrance.is_none() => {
-                    self.entrance = Some(Door::SmallKeyLock);
-                    Ok(self)
-                }
-                Feature::Door(door) if self.entrance.is_none() => {
-                    self.entrance = Some(door.into());
-                    Ok(self)
-                }
-                Feature::Room(Contents::SecretChest(treasure))
-                    if self.entrance.is_none() && self.contents.is_none() =>
-                {
-                    self.contents = Some(Contents::SecretChest(treasure.into()));
-                    Ok(self)
-                }
-                Feature::Room(Contents::Chasm)
-                    if self.entrance.is_none() && self.contents.is_none() =>
-                {
-                    self.contents = Some(Contents::Chasm);
-                    Ok(self)
-                }
-                Feature::Room(Contents::Mote)
-                    if self.entrance.is_none() && self.contents.is_none() =>
-                {
-                    self.contents = Some(Contents::Mote);
-                    Ok(self)
-                }
-                Feature::Room(Contents::Rubble)
-                    if self.entrance.is_none() && self.contents.is_none() =>
-                {
-                    self.contents = Some(Contents::Rubble);
-                    Ok(self)
-                }
-                Feature::Room(Contents::ArrowChallenge) if self.entrance.is_none() => {
+                Feature::Room(
+                    contents @ Contents::ArrowChallenge | contents @ Contents::FireChallenge,
+                ) if self.contents.is_none() => {
                     self.entrance = Some(Door::ActivationLock);
                     Ok(Room {
                         entrance: None,
-                        contents: Some(Contents::ArrowChallenge),
+                        contents: Some(contents),
                         exits: vec![self],
                     })
-                }
-                Feature::Room(Contents::FireChallenge) if self.entrance.is_none() => {
-                    self.entrance = Some(Door::ActivationLock);
-                    Ok(Room {
-                        entrance: None,
-                        contents: Some(Contents::FireChallenge),
-                        exits: vec![self],
-                    })
-                }
-                Feature::Door(Door::DungeonEntrance)
-                    if self.entrance.is_none() && self.contents.is_none() =>
-                {
-                    self.entrance = Some(Door::DungeonEntrance);
-                    Ok(self)
-                }
-                Feature::Room(interior) if self.entrance.is_none() && self.contents.is_none() => {
-                    self.contents = Some(interior.into());
-                    Ok(self)
                 }
                 _ => Err((feature, self)),
             }
