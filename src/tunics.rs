@@ -36,7 +36,8 @@ pub enum Door {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Feature {
     Interior(Interior),
-    Obstacle(Obstacle),
+    Obstacle(ObstacleKind),
+    Puzzle(Treasure),
 }
 
 pub fn gen_treasure_set<R: Rng>(rng: &mut R, n: usize) -> HashSet<Item> {
@@ -106,7 +107,7 @@ impl From<Config> for BuildPlan<AugFeature> {
             build_plan.arc(big_key, big_chest);
             for obstacle in item.get_obstacles() {
                 let obstacle = build_plan.vertex(Op::PrependEach(AugFeature::Feature(
-                    Feature::Obstacle(Obstacle::Obstacle(*obstacle)),
+                    Feature::Obstacle(*obstacle),
                 )));
                 build_plan.arc(big_chest, obstacle);
                 build_plan.arc(obstacle, boss);
@@ -116,7 +117,7 @@ impl From<Config> for BuildPlan<AugFeature> {
         let mut last_locked_door = None;
         for i in 0..config.num_small_keys {
             let locked_door = build_plan.vertex(Op::PrependOne(AugFeature::Feature(
-                Feature::Obstacle(Obstacle::Obstacle(ObstacleKind::Door(Door::SmallKeyLock))),
+                Feature::Obstacle(ObstacleKind::Door(Door::SmallKeyLock)),
             )));
             if let Some(last_locked_door) = last_locked_door {
                 build_plan.arc(locked_door, last_locked_door);
@@ -150,11 +151,11 @@ impl From<Config> for BuildPlan<AugFeature> {
             Interior::SmallChest(Treasure::Map),
         ))));
         if let Some(weak_wall) = build_plan.index(Op::PrependEach(AugFeature::Feature(
-            Feature::Obstacle(Obstacle::Obstacle(ObstacleKind::Door(Door::WeakWall))),
+            Feature::Obstacle(ObstacleKind::Door(Door::WeakWall)),
         ))) {
             let very_weak_wall = build_plan
                 .index(Op::PrependEach(AugFeature::Feature(Feature::Obstacle(
-                    Obstacle::Obstacle(ObstacleKind::Door(Door::VeryWeakWall)),
+                    ObstacleKind::Door(Door::VeryWeakWall),
                 ))))
                 .unwrap();
             build_plan.arc(very_weak_wall, weak_wall);
@@ -264,7 +265,7 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
             ) if is_below => {
                 let next = visit(rng, *next, true);
                 //if rng.gen_bool(0.5) {
-                next.prepended(Feature::Obstacle(Obstacle::Puzzle(treasure)))
+                next.prepended(Feature::Puzzle(treasure))
                 //} else {
                 //next.prepended(Feature::Interior(Interior::SmallChest(treasure)))
                 //}
@@ -272,9 +273,7 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
             FeaturePlan::Feature(AugFeature::Feature(Feature::Interior(Interior::Boss)), next) => {
                 let next = visit(rng, *next, true);
                 next.prepended(Feature::Interior(Interior::Boss))
-                    .prepended(Feature::Obstacle(Obstacle::Obstacle(ObstacleKind::Door(
-                        Door::BigKeyLock,
-                    ))))
+                    .prepended(Feature::Obstacle(ObstacleKind::Door(Door::BigKeyLock)))
             }
             FeaturePlan::Feature(AugFeature::Feature(feature), next) => {
                 visit(rng, *next, is_below).prepended(feature)
@@ -295,7 +294,6 @@ pub mod room {
     use super::Feature;
     use super::Interior;
     use super::Item;
-    use super::Obstacle;
     use super::ObstacleKind;
     use super::Treasure;
     use crate::core::feature;
@@ -425,45 +423,39 @@ pub mod room {
                     self.contents = Some(Contents::SmallChest(treasure));
                     Ok(self)
                 }
-                Feature::Obstacle(Obstacle::Obstacle(ObstacleKind::Door(Door::SmallKeyLock)))
+                Feature::Obstacle(ObstacleKind::Door(Door::SmallKeyLock))
                     if self.entrance.is_none() =>
                 {
                     self.entrance = Some(Door::SmallKeyLock);
                     Ok(self)
                 }
-                Feature::Obstacle(Obstacle::Obstacle(ObstacleKind::Door(door)))
-                    if self.entrance.is_none() =>
-                {
+                Feature::Obstacle(ObstacleKind::Door(door)) if self.entrance.is_none() => {
                     self.entrance = Some(door.into());
                     Ok(self)
                 }
-                Feature::Obstacle(Obstacle::Puzzle(treasure))
-                    if self.entrance.is_none() && self.contents.is_none() =>
-                {
+                Feature::Puzzle(treasure) if self.entrance.is_none() && self.contents.is_none() => {
                     self.contents = Some(Contents::SecretChest(treasure.into()));
                     Ok(self)
                 }
-                Feature::Obstacle(Obstacle::Obstacle(ObstacleKind::Chasm))
+                Feature::Obstacle(ObstacleKind::Chasm)
                     if self.entrance.is_none() && self.contents.is_none() =>
                 {
                     self.contents = Some(Contents::Chasm);
                     Ok(self)
                 }
-                Feature::Obstacle(Obstacle::Obstacle(ObstacleKind::Mote))
+                Feature::Obstacle(ObstacleKind::Mote)
                     if self.entrance.is_none() && self.contents.is_none() =>
                 {
                     self.contents = Some(Contents::Mote);
                     Ok(self)
                 }
-                Feature::Obstacle(Obstacle::Obstacle(ObstacleKind::Rubble))
+                Feature::Obstacle(ObstacleKind::Rubble)
                     if self.entrance.is_none() && self.contents.is_none() =>
                 {
                     self.contents = Some(Contents::Rubble);
                     Ok(self)
                 }
-                Feature::Obstacle(Obstacle::Obstacle(ObstacleKind::ArrowChallenge))
-                    if self.entrance.is_none() =>
-                {
+                Feature::Obstacle(ObstacleKind::ArrowChallenge) if self.entrance.is_none() => {
                     self.entrance = Some(Door::ActivationLock);
                     Ok(Room {
                         entrance: None,
@@ -471,9 +463,7 @@ pub mod room {
                         exits: vec![self],
                     })
                 }
-                Feature::Obstacle(Obstacle::Obstacle(ObstacleKind::FireChallenge))
-                    if self.entrance.is_none() =>
-                {
+                Feature::Obstacle(ObstacleKind::FireChallenge) if self.entrance.is_none() => {
                     self.entrance = Some(Door::ActivationLock);
                     Ok(Room {
                         entrance: None,
@@ -540,7 +530,7 @@ where
                         Feature::Interior(Interior::Boss)
                             | Feature::Interior(Interior::BigChest(_))
                             | Feature::Interior(Interior::SmallChest(Treasure::BigKey))
-                            | Feature::Obstacle(Obstacle::Puzzle(Treasure::BigKey))
+                            | Feature::Puzzle(Treasure::BigKey)
                     )
                 )
             }
