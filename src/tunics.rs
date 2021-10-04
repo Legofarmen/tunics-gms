@@ -373,8 +373,8 @@ pub mod room {
                     None => "".to_string(),
                     Some(door) => format!("{:?}", door),
                 };
-                println!("room{} [label=\"{:?}\"];", id, room.contents);
-                println!("room{} -- room{} [label=\"{}\"];", parent, id, door);
+                println!("  room{} [label=\"{:?}\"];", id, room.contents);
+                println!("  room{} -- room{} [label=\"{}\"];", parent, id, door);
                 next
             }
             println!("graph {{");
