@@ -152,12 +152,12 @@ mod layout {
 
     #[derive(Default)]
     pub struct Layout {
-        rooms: HashMap<Coord, String>,
+        rooms: HashMap<Coord, Option<String>>,
         doors: HashMap<DoorCoord2, String>,
     }
 
     impl Layout {
-        pub fn add_room<C, S>(&mut self, coord: C, desc: S)
+        pub fn add_room<C, S>(&mut self, coord: C, desc: Option<S>)
         where
             C: Into<Coord>,
             S: Into<String>,
@@ -169,7 +169,7 @@ mod layout {
                     panic!("room already exist: ({};{})", coord.x, coord.y);
                 }
                 Entry::Vacant(vacant) => {
-                    vacant.insert(desc.into());
+                    vacant.insert(desc.map(S::into));
                 }
             }
         }
@@ -227,13 +227,22 @@ mod layout {
             println!("  layout=neato;");
             println!("  node [shape=record, width=\"1\", height=\"1\"];");
             for (coord, desc) in &self.rooms {
-                println!(
-                    "  {} [pos=\"{},{}!\", label=\"{}\"];",
-                    room_name(*coord),
-                    2 * coord.x,
-                    2 * coord.y,
-                    desc,
-                );
+                if let Some(desc) = desc {
+                    println!(
+                        "  {} [pos=\"{},{}!\", label=\"{}\"];",
+                        room_name(*coord),
+                        2 * coord.x,
+                        2 * coord.y,
+                        desc,
+                    );
+                } else {
+                    println!(
+                        "  {} [pos=\"{},{}!\", label=\"\" color=\"white\"];",
+                        room_name(*coord),
+                        2 * coord.x,
+                        2 * coord.y,
+                    );
+                }
             }
             for (coord, desc) in &self.doors {
                 println!(
@@ -247,9 +256,18 @@ mod layout {
         }
         pub fn from_room(room: Room) -> Layout {
             let mut layout = Layout::default();
+            let entrance = entrance_label(&room);
             walk(&mut layout, room, 0, 0);
+            layout.add_room::<_, String>((-1, 0), None);
+            layout.add_door((0, 0, Dir4::South), entrance);
             layout
         }
+    }
+    fn entrance_label(room: &Room) -> String {
+        room.entrance
+            .as_ref()
+            .map(|l| format!("{:?}", l))
+            .unwrap_or_else(String::new)
     }
     pub fn walk(layout: &mut Layout, mut room: Room, mut depth: i8, lane0: i8) -> i8 {
         fn room_label(room: &Room) -> String {
@@ -258,14 +276,8 @@ mod layout {
                 .map(|contents| format!("{:?}", contents))
                 .unwrap_or_else(|| "".to_string())
         }
-        fn entrance_label(room: &Room) -> String {
-            room.entrance
-                .as_ref()
-                .map(|l| format!("{:?}", l))
-                .unwrap_or_else(String::new)
-        }
         let desc = room_label(&room);
-        layout.add_room((depth, lane0), desc);
+        layout.add_room((depth, lane0), Some(desc));
         room.exits.sort_by_key(Room::weight);
         let last_exit = room.exits.pop();
         for child in room.exits {
@@ -273,7 +285,7 @@ mod layout {
             let entrance = entrance_label(&child);
             depth = walk(layout, child, depth + 1, lane0 + 1);
             for child_depth in (old_child + 1)..=depth {
-                layout.add_room((child_depth, lane0), "");
+                layout.add_room((child_depth, lane0), Some(""));
                 layout.add_door((child_depth, lane0, Dir4::South), "");
             }
             layout.add_door((old_child + 1, lane0 + 1, Dir4::West), entrance);
