@@ -1,4 +1,3 @@
-use self::room::Contents;
 use crate::core::build::BuildPlan;
 use crate::core::build::Index;
 use crate::core::feature::FeaturePlan;
@@ -38,6 +37,42 @@ pub enum Door {
 pub enum Feature {
     Door(Door),
     Room(Contents),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Contents {
+    Empty,
+    Boss,
+    Fairy,
+    SmallChest(Treasure),
+    BigChest(Item),
+
+    /// Appears when the hero finds a secret.
+    SecretChest(Treasure),
+
+    /// An obstacle the hero needs to swim across.
+    /// The entrance is on the near side, and all exits on the far side.
+    Mote,
+
+    /// An obstacle the hero needs to grapple across.
+    /// The entrance is on the near side, and all exits on the far side.
+    Chasm,
+
+    /// An obstacle the hero needs great plysical strength to cross.
+    /// The entrance is on the near side, and all exits on the far side.
+    Rubble,
+
+    /// The room is activated by shoot with an arrow to open.
+    ArrowChallenge,
+
+    /// Lets the hero activate the room by use of strength.
+    StrengthChallenge,
+
+    /// Lets the hero activate the room by use of fire.
+    FireChallenge,
+
+    /// Lets the hero activate the room by succeeding in combat.
+    CombatChallenge,
 }
 
 pub fn gen_treasure_set<R: Rng>(rng: &mut R, n: usize) -> HashSet<Item> {
@@ -258,52 +293,15 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
 }
 
 pub mod room {
+    use super::Contents;
     use super::Door;
     use super::Feature;
-    use super::Item;
-    use super::Treasure;
     use crate::core::feature;
 
     pub struct Room {
         pub entrance: Option<Door>,
         pub contents: Option<Contents>,
         pub exits: Vec<Room>,
-    }
-
-    #[derive(Clone, Debug, Eq, PartialEq)]
-    pub enum Contents {
-        Empty,
-        Boss,
-        Fairy,
-        SmallChest(Treasure),
-        BigChest(Item),
-
-        /// Appears when the hero finds a secret.
-        SecretChest(Treasure),
-
-        /// An obstacle the hero needs to swim across.
-        /// The entrance is on the near side, and all exits on the far side.
-        Mote,
-
-        /// An obstacle the hero needs to grapple across.
-        /// The entrance is on the near side, and all exits on the far side.
-        Chasm,
-
-        /// An obstacle the hero needs great plysical strength to cross.
-        /// The entrance is on the near side, and all exits on the far side.
-        Rubble,
-
-        /// The room is activated by shoot with an arrow to open.
-        ArrowChallenge,
-
-        /// Lets the hero activate the room by use of strength.
-        StrengthChallenge,
-
-        /// Lets the hero activate the room by use of fire.
-        FireChallenge,
-
-        /// Lets the hero activate the room by succeeding in combat.
-        CombatChallenge,
     }
 
     impl Default for Room {
