@@ -39,7 +39,6 @@ pub enum Feature {
     Entrance,
     Interior(Contents),
     Obstacle(Obstacle),
-    Puzzle(Treasure),
 }
 
 pub fn gen_treasure_set<R: Rng>(rng: &mut R, n: usize) -> HashSet<Item> {
@@ -178,7 +177,6 @@ pub enum Obstacle {
     ArrowChallenge,
     FireChallenge,
     Door(Door),
-    Puzzle(Treasure),
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
@@ -260,7 +258,7 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
             ) if is_below => {
                 let next = visit(rng, *next, true);
                 //if rng.gen_bool(0.5) {
-                next.prepended(Feature::Puzzle(treasure))
+                next.prepended(Feature::Interior(Contents::SecretChest(treasure)))
                 //} else {
                 //next.prepended(Feature::Interior(Interior::SmallChest(treasure)))
                 //}
@@ -414,7 +412,9 @@ pub mod room {
                     self.entrance = Some(door.into());
                     Ok(self)
                 }
-                Feature::Puzzle(treasure) if self.entrance.is_none() && self.contents.is_none() => {
+                Feature::Interior(Contents::SecretChest(treasure))
+                    if self.entrance.is_none() && self.contents.is_none() =>
+                {
                     self.contents = Some(Contents::SecretChest(treasure.into()));
                     Ok(self)
                 }
@@ -509,7 +509,7 @@ where
                         Feature::Interior(Contents::Boss)
                             | Feature::Interior(Contents::BigChest(_))
                             | Feature::Interior(Contents::SmallChest(Treasure::BigKey))
-                            | Feature::Puzzle(Treasure::BigKey)
+                            | Feature::Interior(Contents::SecretChest(Treasure::BigKey))
                     )
                 )
             }
