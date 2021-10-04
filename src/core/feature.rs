@@ -103,14 +103,14 @@ where
         {
             match plan {
                 FeaturePlan::Feature(feature, t) => {
-                    println!("n{} [label=\"{:?}\"];", node, feature);
+                    println!("  n{} [label=\"{:?}\"];", node, feature);
                     let next = visit(t, node, node + 1);
-                    println!("n{} -- n{};", node, parent);
+                    println!("  n{} -- n{};", node, parent);
                     next
                 }
                 FeaturePlan::Branch(ts) => {
-                    println!("n{} [label=\"\"];", node);
-                    println!("n{} -- n{};", node, parent);
+                    println!("  n{} [label=\"\"];", node);
+                    println!("  n{} -- n{};", node, parent);
                     let mut next = node + 1;
                     for t in ts {
                         next = visit(t, node, next);
@@ -120,7 +120,7 @@ where
             }
         }
         println!("graph {{");
-        println!("rankdir=BT;");
+        println!("  rankdir=BT;");
         visit(self, 0, 0);
         println!("}}");
     }

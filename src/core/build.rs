@@ -213,11 +213,11 @@ impl<A: Debug> BuildPlan<A> {
     pub fn show(&self) {
         println!("digraph {{");
         for (i, op) in self.steps.iter().enumerate() {
-            println!("step{} [label=\"{:?}\"];", i, op);
+            println!("  step{} [label=\"{:?}\"];", i, op);
         }
         for (source, targets) in &self.outgoing {
             for target in targets {
-                println!("step{} -> step{};", source.0, target.0);
+                println!("  step{} -> step{};", source.0, target.0);
             }
         }
         println!("}}");
