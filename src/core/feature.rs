@@ -219,20 +219,22 @@ pub trait Room: Default {
 
     fn add_feature(self, feature: Self::Feature) -> Result<Self, (Self::Feature, Self)>;
 
+    fn add_feature_retry(self, feature: Self::Feature) -> Self {
+        let (Ok(room) | Err(room)) = self.add_feature(feature).map_err(|(feature, room)| {
+            Self::default()
+                .add_exits(vec![room])
+                .add_feature(feature)
+                .map_err(|(feature, _)| panic!("feature: {:?}", feature))
+                .ok()
+                .unwrap()
+        });
+        room
+    }
+
     fn from_feature_plan(feature_plan: FeaturePlan<Self::Feature>) -> Self {
         match feature_plan {
             FeaturePlan::Feature(feature, child) => {
-                let (Ok(room) | Err(room)) = Self::from_feature_plan(*child)
-                    .add_feature(feature)
-                    .map_err(|(feature, room)| {
-                        Self::default()
-                            .add_exits(vec![room])
-                            .add_feature(feature)
-                            .map_err(|(feature, _)| panic!("feature: {:?}", feature))
-                            .ok()
-                            .unwrap()
-                    });
-                room
+                Self::from_feature_plan(*child).add_feature_retry(feature)
             }
             FeaturePlan::Branch(nodes) => {
                 let nodes: Vec<_> = nodes.into_iter().map(Self::from_feature_plan).collect();

@@ -423,7 +423,7 @@ pub mod room {
                     contents @ Contents::ArrowChallenge
                     | contents @ Contents::FireChallenge
                     | contents @ Contents::StrengthChallenge,
-                ) if self.contents.is_none() => {
+                ) if self.entrance.is_none() => {
                     self.entrance = Some(Door::ActivationLock);
                     Ok(Room {
                         entrance: None,
