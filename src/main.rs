@@ -24,6 +24,9 @@ struct Opt {
     cul_de_sacs: usize,
 
     #[structopt(long, default_value)]
+    traps: usize,
+
+    #[structopt(long, default_value)]
     small_keys: usize,
 
     #[structopt(long)]
@@ -317,6 +320,7 @@ fn build_plan(seed: u64, opt: Opt) -> (impl Rng, BuildPlan<AugFeature>) {
             num_fairies: opt.fairies,
             num_cul_de_sacs: opt.cul_de_sacs,
             num_small_keys: opt.small_keys,
+            num_traps: opt.traps,
             items,
         }),
     )

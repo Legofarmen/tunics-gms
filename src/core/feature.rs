@@ -211,7 +211,7 @@ where
 }
 
 pub trait Room: Default {
-    type Feature;
+    type Feature: Debug;
 
     fn add_exits<I>(self, exits: I) -> Self
     where
@@ -228,6 +228,7 @@ pub trait Room: Default {
                         Self::default()
                             .add_exits(vec![room])
                             .add_feature(feature)
+                            .map_err(|(feature, _)| panic!("feature: {:?}", feature))
                             .ok()
                             .unwrap()
                     });

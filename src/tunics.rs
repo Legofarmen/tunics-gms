@@ -95,6 +95,7 @@ pub struct Config {
     pub num_small_keys: usize,
     pub num_fairies: usize,
     pub num_cul_de_sacs: usize,
+    pub num_traps: usize,
     pub items: HashSet<Item>,
 }
 
@@ -114,6 +115,13 @@ impl From<Config> for BuildPlan<AugFeature> {
         for _ in 0..config.num_fairies {
             let fairy =
                 build_plan.vertex(Op::New(AugFeature::Feature(Feature::Room(Contents::Fairy))));
+            build_plan.arc(entrance, fairy);
+        }
+
+        for _ in 0..config.num_traps {
+            let fairy = build_plan.vertex(Op::New(AugFeature::Feature(Feature::Room(
+                Contents::CombatChallenge,
+            ))));
             build_plan.arc(entrance, fairy);
         }
 
@@ -280,6 +288,14 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
                     .prepended(Feature::Room(Contents::Empty))
             }
             FeaturePlan::Feature(
+                AugFeature::Feature(Feature::Room(Contents::CombatChallenge)),
+                next,
+            ) => {
+                let next = visit(rng, *next, true);
+                next.prepended(Feature::Room(Contents::CombatChallenge))
+                    .prepended(Feature::Door(Door::Trap))
+            }
+            FeaturePlan::Feature(
                 AugFeature::Feature(Feature::Door(Door::DungeonEntrance)),
                 next,
             ) => {
@@ -388,6 +404,7 @@ pub mod room {
                     contents @ Contents::BigChest(_)
                     | contents @ Contents::Boss
                     | contents @ Contents::Chasm
+                    | contents @ Contents::CombatChallenge
                     | contents @ Contents::Empty
                     | contents @ Contents::Fairy
                     | contents @ Contents::Mote
@@ -399,7 +416,9 @@ pub mod room {
                     Ok(self)
                 }
                 Feature::Room(
-                    contents @ Contents::ArrowChallenge | contents @ Contents::FireChallenge,
+                    contents @ Contents::ArrowChallenge
+                    | contents @ Contents::FireChallenge
+                    | contents @ Contents::StrengthChallenge,
                 ) if self.contents.is_none() => {
                     self.entrance = Some(Door::ActivationLock);
                     Ok(Room {
