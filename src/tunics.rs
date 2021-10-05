@@ -1,7 +1,9 @@
 use crate::core::build::BuildPlan;
 use crate::core::build::Index;
+use crate::core::feature;
 use crate::core::feature::FeaturePlan;
 use crate::core::feature::Op;
+use crate::core::room;
 use rand::Rng;
 use std::collections::HashSet;
 use std::str::FromStr;
@@ -9,6 +11,8 @@ use std::str::FromStr;
 const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
 const MAX_WIDTH: usize = 3;
+
+pub type Room = room::Room<Door, Contents>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Feature {
@@ -317,126 +321,6 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
     visit(rng, feature_plan, false)
 }
 
-pub mod room {
-    use super::Contents;
-    use super::Door;
-    use super::Feature;
-    use crate::core::feature;
-
-    pub struct Room {
-        pub entrance: Option<Door>,
-        pub contents: Option<Contents>,
-        pub exits: Vec<Room>,
-    }
-
-    impl Default for Room {
-        fn default() -> Self {
-            Room {
-                entrance: None,
-                contents: None,
-                exits: vec![],
-            }
-        }
-    }
-
-    impl Room {
-        pub fn is_simple(&self) -> bool {
-            use Contents::*;
-            self.contents
-                .as_ref()
-                .map(|contents| {
-                    matches!(
-                        contents,
-                        Empty | Boss | Fairy | SmallChest(_) | BigChest(_) | SecretChest(_)
-                    )
-                })
-                .unwrap_or(false)
-        }
-
-        pub fn weight(&self) -> usize {
-            self.exits
-                .iter()
-                .map(Room::weight)
-                .fold(1, |acc, weight| acc + weight)
-        }
-
-        pub fn show(&self) {
-            fn visit(room: &Room, parent: usize, id: usize) -> usize {
-                let mut next = id + 1;
-                for child in &room.exits {
-                    next = visit(child, id, next);
-                }
-                let door = match &room.entrance {
-                    None => "".to_string(),
-                    Some(door) => format!("{:?}", door),
-                };
-                if let Some(contents) = &room.contents {
-                    println!("  room{} [label=\"{:?}\"];", id, contents);
-                } else {
-                    println!("  room{} [label=\"\"];", id);
-                }
-                println!("  room{} -- room{} [label=\"{}\"];", parent, id, door);
-                next
-            }
-            println!("graph {{");
-            visit(self, 0, 0);
-            println!("}}");
-        }
-    }
-
-    impl feature::Room for Room {
-        type Feature = Feature;
-
-        fn add_exits<I>(mut self, exits: I) -> Self
-        where
-            I: IntoIterator<Item = Self>,
-        {
-            self.exits.extend(exits);
-            self
-        }
-
-        fn add_feature(mut self, feature: Feature) -> Result<Self, (Feature, Self)> {
-            if self.entrance.is_some() {
-                return Err((feature, self));
-            }
-            match feature {
-                Feature::Door(door) => {
-                    self.entrance = Some(door);
-                    Ok(self)
-                }
-                Feature::Room(
-                    contents @ Contents::BigChest(_)
-                    | contents @ Contents::Boss
-                    | contents @ Contents::Chasm
-                    | contents @ Contents::CombatChallenge
-                    | contents @ Contents::Empty
-                    | contents @ Contents::Fairy
-                    | contents @ Contents::Mote
-                    | contents @ Contents::Rubble
-                    | contents @ Contents::SecretChest(_)
-                    | contents @ Contents::SmallChest(_),
-                ) if self.contents.is_none() => {
-                    self.contents = Some(contents);
-                    Ok(self)
-                }
-                Feature::Room(
-                    contents @ Contents::ArrowChallenge
-                    | contents @ Contents::FireChallenge
-                    | contents @ Contents::StrengthChallenge,
-                ) if self.entrance.is_none() => {
-                    self.entrance = Some(Door::ActivationLock);
-                    Ok(Room {
-                        entrance: None,
-                        contents: Some(contents),
-                        exits: vec![self],
-                    })
-                }
-                _ => Err((feature, self)),
-            }
-        }
-    }
-}
-
 pub fn get_traversal_selector<R>(
     mut rng: R,
     build_plan: &BuildPlan<AugFeature>,
@@ -525,6 +409,58 @@ where
             Some((i, j))
         } else {
             None
+        }
+    }
+}
+
+impl feature::Room for room::Room<Door, Contents> {
+    type Feature = Feature;
+
+    fn add_exits<I>(mut self, exits: I) -> Self
+    where
+        I: IntoIterator<Item = Self>,
+    {
+        self.exits.extend(exits);
+        self
+    }
+
+    fn add_feature(mut self, feature: Feature) -> Result<Self, (Feature, Self)> {
+        if self.entrance.is_some() {
+            return Err((feature, self));
+        }
+        match feature {
+            Feature::Door(door) => {
+                self.entrance = Some(door);
+                Ok(self)
+            }
+            Feature::Room(
+                contents @ Contents::BigChest(_)
+                | contents @ Contents::Boss
+                | contents @ Contents::Chasm
+                | contents @ Contents::CombatChallenge
+                | contents @ Contents::Empty
+                | contents @ Contents::Fairy
+                | contents @ Contents::Mote
+                | contents @ Contents::Rubble
+                | contents @ Contents::SecretChest(_)
+                | contents @ Contents::SmallChest(_),
+            ) if self.contents.is_none() => {
+                self.contents = Some(contents);
+                Ok(self)
+            }
+            Feature::Room(
+                contents @ Contents::ArrowChallenge
+                | contents @ Contents::FireChallenge
+                | contents @ Contents::StrengthChallenge,
+            ) if self.entrance.is_none() => {
+                self.entrance = Some(Door::ActivationLock);
+                Ok(Room {
+                    entrance: None,
+                    contents: Some(contents),
+                    exits: vec![self],
+                })
+            }
+            _ => Err((feature, self)),
         }
     }
 }

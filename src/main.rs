@@ -4,10 +4,10 @@ pub mod tunics;
 use crate::core::build::BuildPlan;
 use crate::core::feature::FeaturePlan;
 use crate::core::feature::Room as _;
-use crate::tunics::room::Room;
 use crate::tunics::AugFeature;
 use crate::tunics::Feature;
 use crate::tunics::Item;
+use crate::tunics::Room;
 use layout::Layout;
 use rand::Rng;
 use structopt::StructOpt;
@@ -46,7 +46,7 @@ enum Command {
 }
 
 mod layout {
-    use crate::tunics::room::Room;
+    use crate::tunics::Room;
     use std::collections::HashMap;
 
     #[derive(Clone, Copy, Eq, Hash, PartialEq)]
