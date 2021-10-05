@@ -282,7 +282,7 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
                 //}
             }
             FeaturePlan::Feature(AugFeature::Feature(Feature::Room(Contents::Boss)), next) => {
-                let next = visit(rng, *next, true);
+                let next = visit(rng, *next, is_below);
                 next.prepended(Feature::Room(Contents::Boss))
                     .prepended(Feature::Door(Door::BigKeyLock))
                     .prepended(Feature::Room(Contents::Empty))
@@ -291,7 +291,7 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
                 AugFeature::Feature(Feature::Room(Contents::CombatChallenge)),
                 next,
             ) => {
-                let next = visit(rng, *next, true);
+                let next = visit(rng, *next, is_below);
                 next.prepended(Feature::Room(Contents::CombatChallenge))
                     .prepended(Feature::Door(Door::Trap))
             }
@@ -299,7 +299,7 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
                 AugFeature::Feature(Feature::Door(Door::DungeonEntrance)),
                 next,
             ) => {
-                let next = visit(rng, *next, true);
+                let next = visit(rng, *next, is_below);
                 next.prepended(Feature::Room(Contents::Empty))
                     .prepended(Feature::Door(Door::DungeonEntrance))
             }
@@ -370,7 +370,11 @@ pub mod room {
                     None => "".to_string(),
                     Some(door) => format!("{:?}", door),
                 };
-                println!("  room{} [label=\"{:?}\"];", id, room.contents);
+                if let Some(contents) = &room.contents {
+                    println!("  room{} [label=\"{:?}\"];", id, contents);
+                } else {
+                    println!("  room{} [label=\"\"];", id);
+                }
                 println!("  room{} -- room{} [label=\"{}\"];", parent, id, door);
                 next
             }
