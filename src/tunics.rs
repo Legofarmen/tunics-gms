@@ -277,6 +277,15 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
                 let next = visit(rng, *next, true);
                 next.prepended(Feature::Room(Contents::Boss))
                     .prepended(Feature::Door(Door::BigKeyLock))
+                    .prepended(Feature::Room(Contents::Empty))
+            }
+            FeaturePlan::Feature(
+                AugFeature::Feature(Feature::Door(Door::DungeonEntrance)),
+                next,
+            ) => {
+                let next = visit(rng, *next, true);
+                next.prepended(Feature::Room(Contents::Empty))
+                    .prepended(Feature::Door(Door::DungeonEntrance))
             }
             FeaturePlan::Feature(AugFeature::Feature(feature), next) => {
                 visit(rng, *next, is_below).prepended(feature)
@@ -372,12 +381,8 @@ pub mod room {
             }
             match feature {
                 Feature::Door(door) => {
-                    if matches!(door, Door::DungeonEntrance) && self.contents.is_some() {
-                        Err((feature, self))
-                    } else {
-                        self.entrance = Some(door);
-                        Ok(self)
-                    }
+                    self.entrance = Some(door);
+                    Ok(self)
                 }
                 Feature::Room(
                     contents @ Contents::BigChest(_)
