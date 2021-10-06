@@ -3,12 +3,14 @@ pub mod tunics;
 
 use crate::core::build::BuildPlan;
 use crate::core::feature::FeaturePlan;
-use crate::core::feature::Room as _;
 use crate::core::floor::FloorPlan;
+use crate::core::room::Room;
+use crate::core::room::RoomExt as _;
 use crate::tunics::AugFeature;
+use crate::tunics::Contents;
+use crate::tunics::Door;
 use crate::tunics::Feature;
 use crate::tunics::Item;
-use crate::tunics::Room;
 use rand::Rng;
 use structopt::StructOpt;
 
@@ -106,7 +108,7 @@ fn feature_plan2(seed: u64, opt: Opt) -> (impl Rng, FeaturePlan<Feature>) {
     (rng, lower(&mut rng4, feature_plan))
 }
 
-fn room_plan(seed: u64, opt: Opt) -> (impl Rng, Room) {
+fn room_plan(seed: u64, opt: Opt) -> (impl Rng, Room<Door, Contents>) {
     let (rng, feature_plan) = feature_plan2(seed, opt);
     (rng, Room::from_feature_plan(feature_plan))
 }

@@ -210,40 +210,6 @@ where
     PrependGrouped(F),
 }
 
-pub trait Room: Default {
-    type Feature: Debug;
-
-    fn add_exits<I>(self, exits: I) -> Self
-    where
-        I: IntoIterator<Item = Self>;
-
-    fn add_feature(self, feature: Self::Feature) -> Result<Self, (Self::Feature, Self)>;
-
-    fn add_feature_retry(self, feature: Self::Feature) -> Self {
-        let (Ok(room) | Err(room)) = self.add_feature(feature).map_err(|(feature, room)| {
-            Self::default()
-                .add_exits(vec![room])
-                .add_feature(feature)
-                .map_err(|(feature, _)| panic!("feature: {:?}", feature))
-                .ok()
-                .unwrap()
-        });
-        room
-    }
-
-    fn from_feature_plan(feature_plan: FeaturePlan<Self::Feature>) -> Self {
-        match feature_plan {
-            FeaturePlan::Feature(feature, child) => {
-                Self::from_feature_plan(*child).add_feature_retry(feature)
-            }
-            FeaturePlan::Branch(nodes) => {
-                let nodes: Vec<_> = nodes.into_iter().map(Self::from_feature_plan).collect();
-                Self::default().add_exits(nodes)
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

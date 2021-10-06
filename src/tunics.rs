@@ -1,9 +1,9 @@
 use crate::core::build::BuildPlan;
 use crate::core::build::Index;
-use crate::core::feature;
 use crate::core::feature::FeaturePlan;
 use crate::core::feature::Op;
-use crate::core::room;
+use crate::core::room::Room;
+use crate::core::room::RoomExt;
 use rand::Rng;
 use std::collections::HashSet;
 use std::str::FromStr;
@@ -11,8 +11,6 @@ use std::str::FromStr;
 const NODE_DEPTH_WEIGHT: usize = 1;
 const BIG_KEY_DEPTH_WEIGHT: usize = 2;
 const MAX_WIDTH: usize = 3;
-
-pub type Room = room::Room<Door, Contents>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Feature {
@@ -413,7 +411,7 @@ where
     }
 }
 
-impl feature::Room for room::Room<Door, Contents> {
+impl RoomExt for Room<Door, Contents> {
     type Feature = Feature;
 
     fn add_exits<I>(mut self, exits: I) -> Self
