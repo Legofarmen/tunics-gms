@@ -5,7 +5,6 @@ use crate::core::build::BuildPlan;
 use crate::core::feature::FeaturePlan;
 use crate::core::floor::FloorPlan;
 use crate::core::room::Room;
-use crate::core::room::RoomExt as _;
 use crate::tunics::AugFeature;
 use crate::tunics::Contents;
 use crate::tunics::Door;

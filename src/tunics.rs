@@ -414,6 +414,22 @@ where
 impl RoomExt for Room<Door, Contents> {
     type Feature = Feature;
 
+    fn is_boundary(&self) -> bool {
+        if self.entrance.is_some() {
+            return true;
+        }
+        match self.contents {
+            Some(Contents::Mote)
+            | Some(Contents::Chasm)
+            | Some(Contents::Rubble)
+            | Some(Contents::ArrowChallenge)
+            | Some(Contents::StrengthChallenge)
+            | Some(Contents::FireChallenge)
+            | Some(Contents::CombatChallenge) => true,
+            _ => false,
+        }
+    }
+
     fn add_exits<I>(mut self, exits: I) -> Self
     where
         I: IntoIterator<Item = Self>,
