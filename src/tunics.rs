@@ -2,8 +2,8 @@ use crate::core::build::BuildPlan;
 use crate::core::build::Index;
 use crate::core::feature::FeaturePlan;
 use crate::core::feature::Op;
-use crate::core::room::Room;
 use crate::core::room::RoomExt;
+use crate::core::room::Tree as RoomTree;
 use rand::Rng;
 use std::collections::HashSet;
 use std::str::FromStr;
@@ -411,7 +411,7 @@ where
     }
 }
 
-impl RoomExt for Room<Door, Contents> {
+impl RoomExt for RoomTree<Door, Contents> {
     type Feature = Feature;
 
     fn is_boundary(&self) -> bool {
@@ -428,14 +428,6 @@ impl RoomExt for Room<Door, Contents> {
             | Some(Contents::CombatChallenge) => true,
             _ => false,
         }
-    }
-
-    fn add_exits<I>(mut self, exits: I) -> Self
-    where
-        I: IntoIterator<Item = Self>,
-    {
-        self.exits.extend(exits);
-        self
     }
 
     fn add_feature(mut self, feature: Feature) -> Result<Self, (Feature, Self)> {
@@ -468,10 +460,10 @@ impl RoomExt for Room<Door, Contents> {
                 | contents @ Contents::StrengthChallenge,
             ) if self.entrance.is_none() => {
                 self.entrance = Some(Door::ActivationLock);
-                Ok(Room {
+                Ok(RoomTree {
                     entrance: None,
                     contents: Some(contents),
-                    exits: vec![self],
+                    exits: [self].into(),
                 })
             }
             _ => Err((feature, self)),

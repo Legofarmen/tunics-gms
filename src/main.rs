@@ -4,7 +4,7 @@ pub mod tunics;
 use crate::core::build::BuildPlan;
 use crate::core::feature::FeaturePlan;
 use crate::core::floor::FloorPlan;
-use crate::core::room::Room;
+use crate::core::room::Tree as RoomTree;
 use crate::tunics::AugFeature;
 use crate::tunics::Contents;
 use crate::tunics::Door;
@@ -107,9 +107,9 @@ fn feature_plan2(seed: u64, opt: Opt) -> (impl Rng, FeaturePlan<Feature>) {
     (rng, lower(&mut rng4, feature_plan))
 }
 
-fn room_plan(seed: u64, opt: Opt) -> (impl Rng, Room<Door, Contents>) {
+fn room_plan(seed: u64, opt: Opt) -> (impl Rng, RoomTree<Door, Contents>) {
     let (rng, feature_plan) = feature_plan2(seed, opt);
-    (rng, Room::from_feature_plan(feature_plan))
+    (rng, RoomTree::from_feature_plan(feature_plan))
 }
 
 fn floor_plan(seed: u64, opt: Opt) -> (impl Rng, FloorPlan) {

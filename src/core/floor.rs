@@ -1,4 +1,4 @@
-use crate::core::room::Room;
+use crate::core::room::Tree as RoomTree;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
@@ -213,7 +213,7 @@ impl FloorPlan {
         println!("}}");
     }
 
-    pub fn from_room<D: Debug, C: Debug>(room: Room<D, C>) -> FloorPlan {
+    pub fn from_room<D: Debug, C: Debug>(room: RoomTree<D, C>) -> FloorPlan {
         let mut floor_plan = FloorPlan::default();
         let entrance = entrance_label(&room);
         floor_plan.walk(room, 0, 0);
@@ -222,8 +222,13 @@ impl FloorPlan {
         floor_plan
     }
 
-    fn walk<D: Debug, C: Debug>(&mut self, mut room: Room<D, C>, mut depth: i8, lane0: i8) -> i8 {
-        fn room_label<D, C: Debug>(room: &Room<D, C>) -> String {
+    fn walk<D: Debug, C: Debug>(
+        &mut self,
+        mut room: RoomTree<D, C>,
+        mut depth: i8,
+        lane0: i8,
+    ) -> i8 {
+        fn room_label<D, C: Debug>(room: &RoomTree<D, C>) -> String {
             room.contents
                 .as_ref()
                 .map(|contents| format!("{:?}", contents))
@@ -231,9 +236,10 @@ impl FloorPlan {
         }
         let desc = room_label(&room);
         self.add_room((depth, lane0), Some(desc));
-        room.exits.sort_by_key(Room::weight);
-        let last_exit = room.exits.pop();
-        for child in room.exits {
+        room.exits.sort_by_weight();
+        let mut exits = room.exits.into_iter();
+        let last_exit = exits.next_back();
+        for child in exits {
             let old_child = depth;
             let entrance = entrance_label(&child);
             depth = self.walk(child, depth + 1, lane0 + 1);
@@ -253,7 +259,7 @@ impl FloorPlan {
     }
 }
 
-fn entrance_label<D: Debug, C>(room: &Room<D, C>) -> String {
+fn entrance_label<D: Debug, C>(room: &RoomTree<D, C>) -> String {
     room.entrance
         .as_ref()
         .map(|l| format!("{:?}", l))
