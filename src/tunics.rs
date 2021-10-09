@@ -6,6 +6,7 @@ use crate::core::room::RoomExt;
 use crate::core::room::Tree as RoomTree;
 use rand::Rng;
 use std::collections::HashSet;
+use std::fmt;
 use std::str::FromStr;
 
 const NODE_DEPTH_WEIGHT: usize = 1;
@@ -39,6 +40,12 @@ pub enum Door {
     /// around the player.
     /// The doors open when the room is activated.
     Trap,
+}
+
+impl fmt::Display for Door {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -75,6 +82,12 @@ pub enum Contents {
 
     /// Lets the hero activate the room by succeeding in combat.
     CombatChallenge,
+}
+
+impl fmt::Display for Contents {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 pub fn gen_treasure_set<R: Rng>(rng: &mut R, n: usize) -> HashSet<Item> {

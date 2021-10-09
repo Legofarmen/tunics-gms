@@ -2,7 +2,7 @@ use crate::core::room::Tree as RoomTree;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Dir2 {
     North,
     East,
@@ -16,7 +16,7 @@ pub enum Dir4 {
     West,
 }
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Coord {
     x: i8,
     y: i8,
@@ -55,7 +55,7 @@ impl Coord {
     }
 }
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct DoorCoord2 {
     coord: Coord,
     dir: Dir2,
@@ -70,7 +70,18 @@ impl DoorCoord2 {
     }
 }
 
-#[derive(Clone, Copy)]
+impl DoorCoord4 {
+    pub fn neighbour(self) -> Coord {
+        match self.dir {
+            Dir4::North => self.coord.north(),
+            Dir4::East => self.coord.east(),
+            Dir4::South => self.coord.south(),
+            Dir4::West => self.coord.west(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct DoorCoord4 {
     coord: Coord,
     dir: Dir4,

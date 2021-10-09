@@ -2,12 +2,14 @@ use crate::core::feature::FeaturePlan;
 use std::collections::VecDeque;
 use std::fmt::Debug;
 
+#[derive(Debug)]
 pub struct Tree<D, C> {
     pub entrance: Option<D>,
     pub contents: Option<C>,
     pub exits: Forest<D, C>,
 }
 
+#[derive(Debug)]
 pub struct Forest<D, C>(VecDeque<Tree<D, C>>);
 
 pub struct Segment<D, C>(VecDeque<Forest<D, C>>);
