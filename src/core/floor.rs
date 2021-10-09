@@ -8,7 +8,7 @@ pub enum Dir2 {
     East,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Dir4 {
     North,
     East,
