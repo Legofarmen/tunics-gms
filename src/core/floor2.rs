@@ -89,6 +89,7 @@ fn allocate<D, C>(
             let room_label = contents.as_ref().map(ToString::to_string);
             let door_coord: DoorCoord4 = (y, x, dir).into();
             let room_coord = door_coord.neighbour();
+            eprintln!("add_room {:?}", room_coord);
             floor_plan.add_room(room_coord, room_label);
             floor_plan.add_door(door_coord, door_label);
             forest
@@ -98,18 +99,31 @@ fn allocate<D, C>(
     next_level.set(x + delta, forest);
 }
 
-pub fn from_forest<D, C>(forest: Forest<D, C>) -> FloorPlan
+pub fn from_forest<D, C>(tree: Tree<D, C>) -> FloorPlan
 where
     Tree<D, C>: RoomExt,
     D: ToString + std::fmt::Debug,
     C: ToString + std::fmt::Debug,
 {
     let mut floor_plan = FloorPlan::default();
-    floor_plan.add_room::<_, String>((0, 0), None);
+    eprintln!("add_room {} {}", -1, 0);
+    floor_plan.add_room::<_, String>((-1, 0), None);
+    let Tree {
+        entrance,
+        contents,
+        exits,
+    } = tree;
+    let door_label = entrance
+        .as_ref()
+        .map(ToString::to_string)
+        .unwrap_or_else(|| "".to_string());
+    let room_label = contents.as_ref().map(ToString::to_string);
+    floor_plan.add_room((0, 0), room_label);
+    floor_plan.add_door((-1, 0, Dir4::North), door_label);
 
     let mut depth = 0;
     let mut level = Level::<Forest<D, C>>::new_forests(depth);
-    level.set(0, forest);
+    level.set(depth, exits);
     let mut seen_non_empty = true;
     while seen_non_empty {
         let mut alloc = Level::new_sets(depth);
@@ -232,8 +246,8 @@ where
             if let Some(Best { pos, .. }) = best {
                 let mut pos2 = pos;
                 while pos2 >= *range.start() && !level.is_empty(pos2) {
-                    alloc.insert(pos2, Dir4::West);
                     alloc.insert(pos2, Dir4::North);
+                    alloc.insert(pos2, Dir4::West);
                     pos2 -= 1;
                 }
                 let mut pos2 = pos;

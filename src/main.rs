@@ -115,7 +115,7 @@ fn room_plan(seed: u64, opt: Opt) -> (impl Rng, RoomTree<Door, Contents>) {
 
 fn floor_plan(seed: u64, opt: Opt) -> (impl Rng, FloorPlan) {
     let (rng, room_plan) = room_plan(seed, opt);
-    (rng, from_forest(room_plan.exits))
+    (rng, from_forest(room_plan))
 }
 
 fn main() {
