@@ -50,6 +50,18 @@ impl<T: Ord> Level<BTreeSet<T>> {
     }
 }
 
+fn allocate<D, C>(next_level: &mut Level<Forest<D, C>>, forest: Forest<D, C>, pos: usize, dir: Dir3)
+where
+    Tree<D, C>: RoomExt,
+{
+    let delta = dir.delta();
+    let forest = match forest.pop_tree() {
+        Ok((door, contents, forest)) => forest,
+        Err(forest) => forest,
+    };
+    next_level.cells[pos + (delta + 1) as usize] = forest;
+}
+
 pub fn doit<D, C, T: Ord>()
 where
     Tree<D, C>: RoomExt,
@@ -75,24 +87,18 @@ where
             if alloc.len() == 0 {
             } else if alloc.len() == 1 {
                 let mut alloc = alloc.into_iter();
-                let delta = alloc.next().unwrap().delta();
-                next_level.cells[i + (delta + 1) as usize] = forest;
+                allocate(&mut next_level, forest, i, alloc.next().unwrap());
             } else if alloc.len() == 2 {
                 let mut alloc = alloc.into_iter();
-                let delta1 = alloc.next().unwrap().delta();
-                let delta2 = alloc.next().unwrap().delta();
                 let (forest1, forest2) = forest.split2();
-                next_level.cells[i + (delta1 + 1) as usize] = forest1;
-                next_level.cells[i + (delta2 + 1) as usize] = forest2;
+                allocate(&mut next_level, forest1, i, alloc.next().unwrap());
+                allocate(&mut next_level, forest2, i, alloc.next().unwrap());
             } else if alloc.len() == 3 {
                 let mut alloc = alloc.into_iter();
-                let delta1 = alloc.next().unwrap().delta();
-                let delta2 = alloc.next().unwrap().delta();
-                let delta3 = alloc.next().unwrap().delta();
                 let (forest1, forest2, forest3) = forest.split3();
-                next_level.cells[i + (delta1 + 1) as usize] = forest1;
-                next_level.cells[i + (delta2 + 1) as usize] = forest2;
-                next_level.cells[i + (delta3 + 1) as usize] = forest3;
+                allocate(&mut next_level, forest1, i, alloc.next().unwrap());
+                allocate(&mut next_level, forest2, i, alloc.next().unwrap());
+                allocate(&mut next_level, forest3, i, alloc.next().unwrap());
             } else {
                 unreachable!();
             }
