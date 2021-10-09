@@ -50,7 +50,7 @@ where
     }
 }
 
-impl<T: Ord> Level<BTreeSet<T>> {
+impl<T: Ord + std::fmt::Debug> Level<BTreeSet<T>> {
     pub fn new_sets(depth: i8) -> Self {
         let width = 2 * depth as usize + 1;
         let mut sets = Vec::with_capacity(width);
@@ -59,6 +59,7 @@ impl<T: Ord> Level<BTreeSet<T>> {
     }
     pub fn insert(&mut self, pos: i8, elem: T) {
         self.cells[(self.depth + pos) as usize].insert(elem);
+        eprintln!("{:?}", &self.cells);
     }
 }
 
@@ -88,8 +89,9 @@ fn allocate<D, C>(
                 .unwrap_or_else(|| "".to_string());
             let room_label = contents.as_ref().map(ToString::to_string);
             let door_coord: DoorCoord4 = (y, x, dir).into();
+            //eprintln!("add_door {:?}", door_coord);
             let room_coord = door_coord.neighbour();
-            eprintln!("add_room {:?}", room_coord);
+            //eprintln!("add_room {:?}", room_coord);
             floor_plan.add_room(room_coord, room_label);
             floor_plan.add_door(door_coord, door_label);
             forest
@@ -106,7 +108,6 @@ where
     C: ToString + std::fmt::Debug,
 {
     let mut floor_plan = FloorPlan::default();
-    eprintln!("add_room {} {}", -1, 0);
     floor_plan.add_room::<_, String>((-1, 0), None);
     let Tree {
         entrance,
@@ -129,8 +130,8 @@ where
         let mut alloc = Level::new_sets(depth);
 
         eprintln!("\ndepth {}", depth);
-        seen_non_empty =
-            alloc_half(&level, &mut alloc, -depth..=0) | alloc_half(&level, &mut alloc, 0..=depth);
+        seen_non_empty = alloc_half(&level, &mut alloc, -depth..=0, Dir4::West, Dir4::North)
+            | alloc_half(&level, &mut alloc, 0..=depth, Dir4::North, Dir4::East);
 
         let mut next_level = Level::<Forest<D, C>>::new_forests(depth + 1);
         for (i, (forest, alloc)) in level
@@ -213,6 +214,8 @@ fn alloc_half<D, C>(
     level: &Level<Forest<D, C>>,
     alloc: &mut Level<BTreeSet<Dir4>>,
     range: RangeInclusive<i8>,
+    dir_left: Dir4,
+    dir_right: Dir4,
 ) -> bool
 where
     Tree<D, C>: RoomExt,
@@ -246,14 +249,12 @@ where
             if let Some(Best { pos, .. }) = best {
                 let mut pos2 = pos;
                 while pos2 >= *range.start() && !level.is_empty(pos2) {
-                    alloc.insert(pos2, Dir4::North);
-                    alloc.insert(pos2, Dir4::West);
+                    alloc.insert(pos2, dir_left);
                     pos2 -= 1;
                 }
                 let mut pos2 = pos;
                 while pos2 <= *range.end() && !level.is_empty(pos2) {
-                    alloc.insert(pos2, Dir4::North);
-                    alloc.insert(pos2, Dir4::East);
+                    alloc.insert(pos2, dir_right);
                     pos2 += 1;
                 }
             }
@@ -263,14 +264,12 @@ where
     if let Some(Best { pos, .. }) = best {
         let mut pos2 = pos;
         while pos2 >= *range.start() && !level.is_empty(pos2) {
-            alloc.insert(pos2, Dir4::West);
-            alloc.insert(pos2, Dir4::North);
+            alloc.insert(pos2, dir_left);
             pos2 -= 1;
         }
         let mut pos2 = pos;
         while pos2 <= *range.end() && !level.is_empty(pos2) {
-            alloc.insert(pos2, Dir4::North);
-            alloc.insert(pos2, Dir4::East);
+            alloc.insert(pos2, dir_right);
             pos2 += 1;
         }
     }
