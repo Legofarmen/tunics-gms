@@ -145,7 +145,6 @@ where
     while seen_non_empty {
         let mut alloc = Level::new_sets(depth);
 
-        eprintln!("depth {}", depth);
         seen_non_empty = alloc_half(&level, &mut alloc, -depth..=0, Dir4::West, Dir4::North)
             | alloc_half(&level, &mut alloc, 0..=depth, Dir4::North, Dir4::East);
 

@@ -82,11 +82,7 @@ fn build_sequence(seed: u64, config: &Config) -> (impl Rng, Vec<Op<AugFeature>>)
     let rng1 = StdRng::seed_from_u64(rng.gen());
 
     let traversal_selector = get_traversal_selector(rng1, &build_plan);
-    let build_sequence = build_plan
-        .build_sequence(traversal_selector)
-        //.inspect(|step| eprintln!("{:?}", step))
-        //;
-        ;
+    let build_sequence = build_plan.build_sequence(traversal_selector);
     (rng, build_sequence.collect())
 }
 
@@ -166,8 +162,8 @@ fn main() {
             }
         })
         .collect();
-    eprintln!("{}", seed);
-    eprintln!("{:?}", items);
+    eprintln!("seed {}", seed);
+    eprintln!("items {:?}", items);
 
     let config = Config {
         num_small_keys: opt.small_keys,
