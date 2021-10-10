@@ -102,10 +102,13 @@ fn allocate<D, C>(
                 .as_ref()
                 .map(ToString::to_string)
                 .unwrap_or_else(|| "".to_string());
-            let room_label = contents.as_ref().map(ToString::to_string);
+            let room_label = contents
+                .as_ref()
+                .map(ToString::to_string)
+                .unwrap_or_else(|| "Empty".to_string());
             let door_coord: DoorCoord4 = (y, x, dir).into();
             let room_coord = door_coord.neighbour();
-            floor_plan.add_room(room_coord, room_label);
+            floor_plan.add_room(room_coord, Some(room_label));
             floor_plan.add_door(door_coord, door_label);
             forest
         }
