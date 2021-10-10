@@ -45,10 +45,7 @@ impl<D, C> Forest<D, C> {
     }
 
     pub fn weight(&self) -> usize {
-        self.0
-            .iter()
-            .map(|tree| tree.exits.weight())
-            .fold(1, |acc, weight| acc + weight)
+        self.0.iter().map(|tree| 1 + tree.exits.weight()).sum()
     }
 }
 
