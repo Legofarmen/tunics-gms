@@ -184,7 +184,7 @@ where
                     _ => feature_plan.prepended(feature),
                 },
                 Op::PrependGrouped(feature) => feature_plan.prepended(feature),
-            }
+            };
         }
         feature_plan
     }

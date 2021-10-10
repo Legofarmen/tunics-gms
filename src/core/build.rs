@@ -2,15 +2,16 @@ use crate::core::feature::Op;
 use bitvec::bitvec;
 use bitvec::vec::BitVec;
 use lazy_static::lazy_static;
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 
 lazy_static! {
-    static ref EMPTY_SET: HashSet<Index> = HashSet::new();
+    static ref EMPTY_SET: BTreeSet<Index> = BTreeSet::new();
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Index(usize);
 
 pub struct BuildPlan<E>
@@ -18,8 +19,8 @@ where
     E: Debug,
 {
     steps: Vec<Op<E>>,
-    outgoing: HashMap<Index, HashSet<Index>>, // (Source, Target)
-    incoming: HashMap<Index, HashSet<Index>>, // (Target, Source)
+    outgoing: HashMap<Index, BTreeSet<Index>>, // (Source, Target)
+    incoming: HashMap<Index, BTreeSet<Index>>, // (Target, Source)
 }
 
 impl<E> BuildPlan<E>
@@ -41,17 +42,17 @@ where
     pub fn arc(&mut self, source: Index, dest: Index) {
         self.outgoing
             .entry(source)
-            .or_insert_with(HashSet::new)
+            .or_insert_with(BTreeSet::new)
             .insert(dest);
         self.incoming
             .entry(dest)
-            .or_insert_with(HashSet::new)
+            .or_insert_with(BTreeSet::new)
             .insert(source);
     }
     pub fn sorted(&self) -> Vec<Index> {
         fn visit(
             index: Index,
-            outgoing: &HashMap<Index, HashSet<Index>>,
+            outgoing: &HashMap<Index, BTreeSet<Index>>,
             permanent: &mut HashSet<Index>,
             temporary: &mut HashSet<Index>,
             result: &mut Vec<Index>,
@@ -95,10 +96,10 @@ where
     pub fn steps(&self) -> &[Op<E>] {
         self.steps.as_slice()
     }
-    pub fn outgoing(&self, source: Index) -> &HashSet<Index> {
+    pub fn outgoing(&self, source: Index) -> &BTreeSet<Index> {
         self.outgoing.get(&source).unwrap_or(&EMPTY_SET)
     }
-    pub fn incoming(&self, source: Index) -> &HashSet<Index> {
+    pub fn incoming(&self, source: Index) -> &BTreeSet<Index> {
         self.incoming.get(&source).unwrap_or(&EMPTY_SET)
     }
     pub fn reachable_counts(&self) -> HashMap<Index, usize> {
@@ -171,6 +172,8 @@ where
         let index = traversal_selector(open);
         open.retain(|&x| x != index);
         closed.insert(index);
+
+        // BuildPlan.incoming.iter() needs to be deterministic
         open.extend(build_plan.incoming(index).iter().cloned().filter(|&src| {
             build_plan
                 .outgoing(src)
