@@ -209,7 +209,7 @@ where
 }
 
 impl<D: Debug, C: Debug> Tree<D, C> {
-    pub fn show(&self) {
+    pub fn show<M: std::fmt::Display>(&self, metadata: M, seed: u64) {
         fn visit<D: Debug, C: Debug>(room: &Tree<D, C>, parent: usize, id: usize) -> usize {
             let mut next = id + 1;
             for child in &room.exits.0 {
@@ -228,6 +228,11 @@ impl<D: Debug, C: Debug> Tree<D, C> {
             next
         }
         println!("graph {{");
+        println!("  labelloc=\"t\";");
+        println!(
+            "  label=<<b>Room plan</b><br/>{}<br/>seed: {}>;",
+            metadata, seed
+        );
         visit(self, 0, 0);
         println!("}}");
     }

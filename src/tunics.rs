@@ -5,7 +5,7 @@ use crate::core::feature::Op;
 use crate::core::room::RoomExt;
 use crate::core::room::Tree as RoomTree;
 use rand::Rng;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::fmt;
 use std::str::FromStr;
 
@@ -103,12 +103,23 @@ impl Item {
     }
 }
 
+#[derive(Clone)]
 pub struct Config {
+    pub items: BTreeSet<Item>,
     pub num_small_keys: usize,
+    pub num_traps: usize,
     pub num_fairies: usize,
     pub num_cul_de_sacs: usize,
-    pub num_traps: usize,
-    pub items: HashSet<Item>,
+}
+
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "items: {:?}, ", self.items)?;
+        write!(f, "small keys: {},", self.num_small_keys)?;
+        write!(f, "traps: {}, ", self.num_traps)?;
+        write!(f, "fairies: {}, ", self.num_fairies)?;
+        write!(f, "cul-de-sacs: {}", self.num_cul_de_sacs)
+    }
 }
 
 impl From<Config> for BuildPlan<AugFeature> {
@@ -228,7 +239,7 @@ pub enum Treasure {
     Item(Item),
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Item {
     BombBag,
     Bow,

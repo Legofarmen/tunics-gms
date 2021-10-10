@@ -69,12 +69,12 @@ impl std::str::FromStr for OptItem {
     }
 }
 
-fn build_plan(seed: u64, config: Config) -> (impl Rng, BuildPlan<AugFeature>) {
+fn build_plan(seed: u64, config: &Config) -> (impl Rng, BuildPlan<AugFeature>) {
     let rng = StdRng::seed_from_u64(seed);
-    (rng, BuildPlan::from(config))
+    (rng, BuildPlan::from(config.clone()))
 }
 
-fn build_sequence(seed: u64, config: Config) -> (impl Rng, Vec<Op<AugFeature>>) {
+fn build_sequence(seed: u64, config: &Config) -> (impl Rng, Vec<Op<AugFeature>>) {
     use crate::tunics::get_traversal_selector;
 
     let (mut rng, build_plan) = build_plan(seed, config);
@@ -90,7 +90,7 @@ fn build_sequence(seed: u64, config: Config) -> (impl Rng, Vec<Op<AugFeature>>) 
     (rng, build_sequence.collect())
 }
 
-fn feature_plan1(seed: u64, config: Config) -> (impl Rng, FeaturePlan<AugFeature>) {
+fn feature_plan1(seed: u64, config: &Config) -> (impl Rng, FeaturePlan<AugFeature>) {
     use crate::tunics::get_join_selector;
     use crate::tunics::get_prepend_selector;
 
@@ -107,7 +107,7 @@ fn feature_plan1(seed: u64, config: Config) -> (impl Rng, FeaturePlan<AugFeature
     )
 }
 
-fn feature_plan2(seed: u64, config: Config) -> (impl Rng, FeaturePlan<Feature>) {
+fn feature_plan2(seed: u64, config: &Config) -> (impl Rng, FeaturePlan<Feature>) {
     use crate::tunics::lower;
 
     let (mut rng, feature_plan) = feature_plan1(seed, config);
@@ -116,18 +116,28 @@ fn feature_plan2(seed: u64, config: Config) -> (impl Rng, FeaturePlan<Feature>) 
     (rng, lower(&mut rng4, feature_plan))
 }
 
-fn room_plan(seed: u64, config: Config) -> (impl Rng, RoomTree<Door, Contents>) {
+fn room_plan(seed: u64, config: &Config) -> (impl Rng, RoomTree<Door, Contents>) {
     let (rng, feature_plan) = feature_plan2(seed, config);
     (rng, RoomTree::from_feature_plan(feature_plan))
 }
 
-fn floor_plan(seed: u64, config: Config) -> (impl Rng, FloorPlan) {
+fn floor_plan(seed: u64, config: &Config) -> (impl Rng, FloorPlan) {
     let (rng, room_plan) = room_plan(seed, config);
     (rng, from_forest(room_plan))
 }
 
-fn show_vec<T: std::fmt::Debug>(sequence: Vec<T>) {
+fn show_vec<T: std::fmt::Debug, M: std::fmt::Display>(
+    sequence: Vec<T>,
+    title: &str,
+    metadata: M,
+    seed: u64,
+) {
     println!("digraph {{");
+    println!("  labelloc=\"t\";");
+    println!(
+        "  label=<<b>{}</b><br/>{}<br/>seed: {}>;",
+        title, metadata, seed,
+    );
     for (i, elem) in sequence.iter().enumerate() {
         println!("  elem{} [label=\"{:?}\"];", i, elem);
         if i > 0 {
@@ -169,22 +179,31 @@ fn main() {
 
     match opt.cmd {
         Command::BuildPlan => {
-            build_plan(seed, config).1.show();
+            build_plan(seed, &config).1.show(config, seed);
         }
         Command::BuildSequence => {
-            show_vec(build_sequence(seed, config).1);
+            show_vec(
+                build_sequence(seed, &config).1,
+                "Build sequence",
+                config,
+                seed,
+            );
         }
         Command::FeaturePlan1 => {
-            feature_plan1(seed, config).1.show();
+            feature_plan1(seed, &config)
+                .1
+                .show("Feature plan 1", config, seed);
         }
         Command::FeaturePlan2 => {
-            feature_plan2(seed, config).1.show();
+            feature_plan2(seed, &config)
+                .1
+                .show("Feature plan 2", config, seed);
         }
         Command::RoomPlan => {
-            room_plan(seed, config).1.show();
+            room_plan(seed, &config).1.show(config, seed);
         }
         Command::FloorPlan => {
-            floor_plan(seed, config).1.show();
+            floor_plan(seed, &config).1.show(config, seed);
         }
     };
 }

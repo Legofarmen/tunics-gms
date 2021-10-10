@@ -176,7 +176,7 @@ impl FloorPlan {
         }
     }
 
-    pub fn show(&self) {
+    pub fn show<M: std::fmt::Display>(&self, metadata: M, seed: u64) {
         fn room_name(coord: Coord) -> String {
             if coord.y >= 0 {
                 if coord.x >= 0 {
@@ -194,6 +194,11 @@ impl FloorPlan {
         }
         println!("graph {{");
         println!("  layout=neato;");
+        println!("  labelloc=\"t\";");
+        println!(
+            "  label=<<b>Floor plan</b><br/>{}<br/>seed: {}>;",
+            metadata, seed,
+        );
         println!("  node [shape=record, width=\"1\", height=\"1\"];");
         for (coord, desc) in &self.rooms {
             if let Some(desc) = desc {

@@ -96,7 +96,7 @@ impl<F> FeaturePlan<F>
 where
     F: Debug,
 {
-    pub fn show(&self) {
+    pub fn show<M: std::fmt::Display>(&self, title: &str, metadata: M, seed: u64) {
         fn visit<F>(plan: &FeaturePlan<F>, parent: usize, node: usize) -> usize
         where
             F: Debug,
@@ -120,6 +120,11 @@ where
             }
         }
         println!("graph {{");
+        println!("  labelloc=\"t\";");
+        println!(
+            "  label=<<b>{}</b><br/>{}<br/>seed: {}>;",
+            title, metadata, seed
+        );
         println!("  rankdir=BT;");
         visit(self, 0, 0);
         println!("}}");
