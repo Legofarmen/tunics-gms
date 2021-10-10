@@ -136,6 +136,7 @@ impl FloorPlan {
     {
         use std::collections::btree_map::Entry;
         let coord = coord.into();
+        //eprintln!("room {};{}", coord.x, coord.y);
         match self.rooms.entry(coord) {
             Entry::Occupied(_) => {
                 panic!("room already exist: ({};{})", coord.x, coord.y);
@@ -155,6 +156,12 @@ impl FloorPlan {
 
         let door_coord4 = door_coord4.into();
         let door_coord2 = DoorCoord2::from(door_coord4);
+        /*
+        eprintln!(
+            "door {};{} {:?}",
+            door_coord4.coord.x, door_coord4.coord.y, door_coord4.dir
+        );
+        */
         if !self.rooms.contains_key(&door_coord2.coord) {
             panic!(
                 "room doest not exist: ({};{})",
@@ -306,7 +313,7 @@ impl<T: Ord + std::fmt::Debug> Level<BTreeSet<T>> {
     }
 }
 
-fn allocate<D, C>(
+fn assign<D, C>(
     next_level: &mut Level<Forest<D, C>>,
     forest: Forest<D, C>,
     x: i8,
@@ -318,12 +325,15 @@ fn allocate<D, C>(
     D: ToString,
     C: ToString,
 {
+    eprintln!("{:?} {}", dir, forest.weight());
     let delta = match dir {
         Dir4::North => 0,
         Dir4::East => 1,
         Dir4::West => -1,
         _ => unreachable!(),
     };
+    let door_coord: DoorCoord4 = (y, x, dir).into();
+    let room_coord = door_coord.neighbour();
     let forest = match forest.pop_tree() {
         Ok((door, contents, forest)) => {
             let door_label = door
@@ -334,13 +344,15 @@ fn allocate<D, C>(
                 .as_ref()
                 .map(ToString::to_string)
                 .unwrap_or_else(|| "Empty".to_string());
-            let door_coord: DoorCoord4 = (y, x, dir).into();
-            let room_coord = door_coord.neighbour();
             floor_plan.add_room(room_coord, Some(room_label));
             floor_plan.add_door(door_coord, door_label);
             forest
         }
-        Err(forest) => forest,
+        Err(forest) => {
+            floor_plan.add_room(room_coord, Some("Empty"));
+            floor_plan.add_door(door_coord, "");
+            forest
+        }
     };
     next_level.set(x + delta, forest);
 }
@@ -371,10 +383,19 @@ where
     level.set(depth, exits);
     let mut seen_non_empty = true;
     while seen_non_empty {
+        eprintln!("# depth {}", depth);
         let mut alloc = Level::new_sets(depth);
 
-        seen_non_empty = alloc_half(&level, &mut alloc, -depth..=0, Dir4::West, Dir4::North)
+        eprintln!(
+            "level {:?}",
+            &level.cells.iter().map(|f| f.weight()).collect::<Vec<_>>()
+        );
+
+        seen_non_empty = false
+            | alloc_half(&level, &mut alloc, -depth..=0, Dir4::West, Dir4::North)
             | alloc_half(&level, &mut alloc, 0..=depth, Dir4::North, Dir4::East);
+
+        eprintln!("alloc {:?}", &alloc.cells);
 
         let mut next_level = Level::<Forest<D, C>>::new_forests(depth + 1);
         for (i, (forest, alloc)) in level
@@ -385,27 +406,28 @@ where
         {
             let x = i as i8 - depth;
             let y = depth - x.abs();
+            eprintln!("a {:?}", &alloc);
             if alloc.len() == 0 {
             } else if alloc.len() == 1 {
                 let mut alloc = alloc.into_iter();
                 let dir1 = alloc.next().unwrap();
-                allocate(&mut next_level, forest, x, y, dir1, &mut floor_plan);
+                assign(&mut next_level, forest, x, y, dir1, &mut floor_plan);
             } else if alloc.len() == 2 {
                 let mut alloc = alloc.into_iter();
                 let (forest1, forest2) = forest.split2();
                 let dir1 = alloc.next().unwrap();
                 let dir2 = alloc.next().unwrap();
-                allocate(&mut next_level, forest1, x, y, dir1, &mut floor_plan);
-                allocate(&mut next_level, forest2, x, y, dir2, &mut floor_plan);
+                assign(&mut next_level, forest1, x, y, dir1, &mut floor_plan);
+                assign(&mut next_level, forest2, x, y, dir2, &mut floor_plan);
             } else if alloc.len() == 3 {
                 let mut alloc = alloc.into_iter();
                 let (forest1, forest2, forest3) = forest.split3();
                 let dir1 = alloc.next().unwrap();
                 let dir2 = alloc.next().unwrap();
                 let dir3 = alloc.next().unwrap();
-                allocate(&mut next_level, forest1, x, y, dir1, &mut floor_plan);
-                allocate(&mut next_level, forest2, x, y, dir2, &mut floor_plan);
-                allocate(&mut next_level, forest3, x, y, dir3, &mut floor_plan);
+                assign(&mut next_level, forest1, x, y, dir1, &mut floor_plan);
+                assign(&mut next_level, forest2, x, y, dir2, &mut floor_plan);
+                assign(&mut next_level, forest3, x, y, dir3, &mut floor_plan);
             } else {
                 unreachable!();
             }
