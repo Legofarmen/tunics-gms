@@ -15,7 +15,13 @@ pub struct Level<T> {
 
 impl<T> Level<T> {
     pub fn set(&mut self, pos: i8, elem: T) {
-        self.cells[(self.depth + pos) as usize] = elem;
+        *self.get_mut(pos) = elem;
+    }
+    fn get(&self, pos: i8) -> &T {
+        &self.cells[(self.depth + pos) as usize]
+    }
+    fn get_mut(&mut self, pos: i8) -> &mut T {
+        &mut self.cells[(self.depth + pos) as usize]
     }
 }
 
@@ -30,7 +36,7 @@ impl<D, C> Level<Forest<D, C>> {
         }
     }
     pub fn is_empty(&self, pos: i8) -> bool {
-        self.cells[(self.depth + pos) as usize].is_empty()
+        self.get(pos).is_empty()
     }
 }
 
@@ -38,15 +44,25 @@ impl<D, C> Level<Forest<D, C>>
 where
     Tree<D, C>: RoomExt,
 {
+    pub fn weight(&self, pos: i8) -> usize {
+        self.get(pos).weight()
+    }
+    pub fn linear_weight(&self, pos: i8) -> usize {
+        self.get(pos).linear_weight()
+    }
     pub fn score(&self, pos: i8) -> (isize, isize) {
-        let forest = &self.cells[(self.depth + pos) as usize];
-        let weight = forest.weight() as isize;
-        let x = if weight > 1 {
-            -(forest.linear_weight() as isize)
+        let forest = self.get(pos);
+        let total_weight = forest.weight() as isize;
+        let linear_weight = forest.linear_weight() as isize;
+        if total_weight == 1 {
+            (200, 200)
+        } else if linear_weight == 1 {
+            (200, 100 + total_weight)
+        } else if linear_weight == total_weight {
+            (100 + linear_weight, 100 + total_weight)
         } else {
-            isize::MIN
-        };
-        (x, -weight)
+            (linear_weight, total_weight)
+        }
     }
 }
 
@@ -58,8 +74,8 @@ impl<T: Ord + std::fmt::Debug> Level<BTreeSet<T>> {
         Level { depth, cells: sets }
     }
     pub fn insert(&mut self, pos: i8, elem: T) {
-        self.cells[(self.depth + pos) as usize].insert(elem);
-        eprintln!("{:?}", &self.cells);
+        self.get_mut(pos).insert(elem);
+        eprintln!("alloc {:?}", self.cells);
     }
 }
 
@@ -89,9 +105,7 @@ fn allocate<D, C>(
                 .unwrap_or_else(|| "".to_string());
             let room_label = contents.as_ref().map(ToString::to_string);
             let door_coord: DoorCoord4 = (y, x, dir).into();
-            //eprintln!("add_door {:?}", door_coord);
             let room_coord = door_coord.neighbour();
-            //eprintln!("add_room {:?}", room_coord);
             floor_plan.add_room(room_coord, room_label);
             floor_plan.add_door(door_coord, door_label);
             forest
@@ -129,7 +143,7 @@ where
     while seen_non_empty {
         let mut alloc = Level::new_sets(depth);
 
-        eprintln!("\ndepth {}", depth);
+        eprintln!("depth {}", depth);
         seen_non_empty = alloc_half(&level, &mut alloc, -depth..=0, Dir4::West, Dir4::North)
             | alloc_half(&level, &mut alloc, 0..=depth, Dir4::North, Dir4::East);
 
@@ -145,60 +159,27 @@ where
             if alloc.len() == 0 {
             } else if alloc.len() == 1 {
                 let mut alloc = alloc.into_iter();
-                allocate(
-                    &mut next_level,
-                    forest,
-                    x,
-                    y,
-                    alloc.next().unwrap(),
-                    &mut floor_plan,
-                );
+                let dir1 = alloc.next().unwrap();
+                eprintln!("alloc {};{} {:?}", x, y, dir1);
+                allocate(&mut next_level, forest, x, y, dir1, &mut floor_plan);
             } else if alloc.len() == 2 {
                 let mut alloc = alloc.into_iter();
                 let (forest1, forest2) = forest.split2();
-                allocate(
-                    &mut next_level,
-                    forest1,
-                    x,
-                    y,
-                    alloc.next().unwrap(),
-                    &mut floor_plan,
-                );
-                allocate(
-                    &mut next_level,
-                    forest2,
-                    x,
-                    y,
-                    alloc.next().unwrap(),
-                    &mut floor_plan,
-                );
+                let dir1 = alloc.next().unwrap();
+                let dir2 = alloc.next().unwrap();
+                eprintln!("alloc {};{} {:?} {:?}", x, y, dir1, dir2);
+                allocate(&mut next_level, forest1, x, y, dir1, &mut floor_plan);
+                allocate(&mut next_level, forest2, x, y, dir2, &mut floor_plan);
             } else if alloc.len() == 3 {
                 let mut alloc = alloc.into_iter();
                 let (forest1, forest2, forest3) = forest.split3();
-                allocate(
-                    &mut next_level,
-                    forest1,
-                    x,
-                    y,
-                    alloc.next().unwrap(),
-                    &mut floor_plan,
-                );
-                allocate(
-                    &mut next_level,
-                    forest2,
-                    x,
-                    y,
-                    alloc.next().unwrap(),
-                    &mut floor_plan,
-                );
-                allocate(
-                    &mut next_level,
-                    forest3,
-                    x,
-                    y,
-                    alloc.next().unwrap(),
-                    &mut floor_plan,
-                );
+                let dir1 = alloc.next().unwrap();
+                let dir2 = alloc.next().unwrap();
+                let dir3 = alloc.next().unwrap();
+                eprintln!("alloc {};{} {:?} {:?} {:?}", x, y, dir1, dir2, dir3);
+                allocate(&mut next_level, forest1, x, y, dir1, &mut floor_plan);
+                allocate(&mut next_level, forest2, x, y, dir2, &mut floor_plan);
+                allocate(&mut next_level, forest3, x, y, dir3, &mut floor_plan);
             } else {
                 unreachable!();
             }
@@ -222,7 +203,6 @@ where
     D: std::fmt::Debug,
     C: std::fmt::Debug,
 {
-    eprintln!("<");
     #[derive(Debug)]
     struct Best {
         pos: i8,
@@ -230,10 +210,17 @@ where
     }
     let mut best: Option<Best> = None;
     let mut seen_non_empty = false;
+    //let special = level.weight(0) > 0 && level.linear_weight(0) <= 1;
+    //if special {
+    //seen_non_empty = true;
+    //alloc.insert(0, Dir4::North);
+    //}
     for pos in range.clone() {
         let pos = pos as i8;
+        //if special && pos == 0 {
+        //continue;
+        //}
         if !level.is_empty(pos) {
-            eprintln!("pos {} !empty", pos);
             seen_non_empty = true;
             if let Some(ref mut best) = &mut best {
                 let score = level.score(pos);
@@ -245,7 +232,6 @@ where
                 best = Some(Best { pos, score });
             }
         } else {
-            eprintln!("pos {} empty", pos);
             if let Some(Best { pos, .. }) = best {
                 let mut pos2 = pos;
                 while pos2 >= *range.start() && !level.is_empty(pos2) {
@@ -264,15 +250,20 @@ where
     if let Some(Best { pos, .. }) = best {
         let mut pos2 = pos;
         while pos2 >= *range.start() && !level.is_empty(pos2) {
+            //if special && pos2 == 0 {
+            //continue;
+            //}
             alloc.insert(pos2, dir_left);
             pos2 -= 1;
         }
         let mut pos2 = pos;
         while pos2 <= *range.end() && !level.is_empty(pos2) {
+            //if special && pos2 == 0 {
+            //continue;
+            //}
             alloc.insert(pos2, dir_right);
             pos2 += 1;
         }
     }
-    eprintln!(">");
     seen_non_empty
 }

@@ -87,7 +87,7 @@ where
                 std::mem::swap(&mut a_score, &mut b_score);
             }
         }
-        (a, b)
+        (b, a)
     }
 
     pub fn split3(mut self) -> (Self, Self, Self) {
@@ -112,7 +112,7 @@ where
                 std::mem::swap(&mut b_score, &mut c_score);
             }
         }
-        (a, b, c)
+        (a, c, b)
     }
 
     /// Pop an item that could be taken out and put in front of the entire forest without
