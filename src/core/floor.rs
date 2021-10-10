@@ -1,9 +1,8 @@
-use crate::core::room::Tree as RoomTree;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum Dir2 {
+enum Dir2 {
     North,
     East,
 }
@@ -56,7 +55,7 @@ impl Coord {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct DoorCoord2 {
+struct DoorCoord2 {
     coord: Coord,
     dir: Dir2,
 }
@@ -228,56 +227,4 @@ impl FloorPlan {
         }
         println!("}}");
     }
-
-    pub fn from_room<D: Debug, C: Debug>(room: RoomTree<D, C>) -> FloorPlan {
-        let mut floor_plan = FloorPlan::default();
-        let entrance = entrance_label(&room);
-        floor_plan.walk(room, 0, 0);
-        floor_plan.add_room::<_, String>((-1, 0), None);
-        floor_plan.add_door((0, 0, Dir4::South), entrance);
-        floor_plan
-    }
-
-    fn walk<D: Debug, C: Debug>(
-        &mut self,
-        mut room: RoomTree<D, C>,
-        mut depth: i8,
-        lane0: i8,
-    ) -> i8 {
-        fn room_label<D, C: Debug>(room: &RoomTree<D, C>) -> String {
-            room.contents
-                .as_ref()
-                .map(|contents| format!("{:?}", contents))
-                .unwrap_or_else(|| "".to_string())
-        }
-        let desc = room_label(&room);
-        self.add_room((depth, lane0), Some(desc));
-        room.exits.sort_by_weight();
-        let mut exits = room.exits.into_iter();
-        let last_exit = exits.next_back();
-        for child in exits {
-            let old_child = depth;
-            let entrance = entrance_label(&child);
-            depth = self.walk(child, depth + 1, lane0 + 1);
-            for child_depth in (old_child + 1)..=depth {
-                self.add_room((child_depth, lane0), Some(""));
-                self.add_door((child_depth, lane0, Dir4::South), "");
-            }
-            self.add_door((old_child + 1, lane0 + 1, Dir4::West), entrance);
-        }
-        if let Some(last_exit) = last_exit {
-            let old_child = depth;
-            let entrance = entrance_label(&last_exit);
-            depth = self.walk(last_exit, depth + 1, lane0);
-            self.add_door((old_child + 1, lane0, Dir4::South), entrance);
-        }
-        depth
-    }
-}
-
-fn entrance_label<D: Debug, C>(room: &RoomTree<D, C>) -> String {
-    room.entrance
-        .as_ref()
-        .map(|l| format!("{:?}", l))
-        .unwrap_or_else(String::new)
 }
