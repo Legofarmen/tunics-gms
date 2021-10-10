@@ -1,13 +1,13 @@
 use crate::core::room::Forest;
 use crate::core::room::RoomExt;
 use crate::core::room::Tree;
+use std::collections::BTreeMap;
 use std::collections::BTreeSet;
-use std::collections::HashMap;
 use std::ops::RangeInclusive;
 
 use std::fmt::Debug;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 enum Dir2 {
     North,
     East,
@@ -21,7 +21,7 @@ pub enum Dir4 {
     West,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Coord {
     x: i8,
     y: i8,
@@ -60,7 +60,7 @@ impl Coord {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 struct DoorCoord2 {
     coord: Coord,
     dir: Dir2,
@@ -124,8 +124,8 @@ impl From<(i8, i8, Dir4)> for DoorCoord4 {
 
 #[derive(Default)]
 pub struct FloorPlan {
-    rooms: HashMap<Coord, Option<String>>,
-    doors: HashMap<DoorCoord2, String>,
+    rooms: BTreeMap<Coord, Option<String>>,
+    doors: BTreeMap<DoorCoord2, String>,
 }
 
 impl FloorPlan {
@@ -134,7 +134,7 @@ impl FloorPlan {
         C: Into<Coord>,
         S: Into<String>,
     {
-        use std::collections::hash_map::Entry;
+        use std::collections::btree_map::Entry;
         let coord = coord.into();
         match self.rooms.entry(coord) {
             Entry::Occupied(_) => {
@@ -151,7 +151,7 @@ impl FloorPlan {
         C: Into<DoorCoord4>,
         S: Into<String>,
     {
-        use std::collections::hash_map::Entry;
+        use std::collections::btree_map::Entry;
 
         let door_coord4 = door_coord4.into();
         let door_coord2 = DoorCoord2::from(door_coord4);
