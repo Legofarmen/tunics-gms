@@ -115,7 +115,7 @@ pub struct Config {
 impl fmt::Display for Config {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "items: {:?}, ", self.items)?;
-        write!(f, "small keys: {},", self.num_small_keys)?;
+        write!(f, "small keys: {}, ", self.num_small_keys)?;
         write!(f, "traps: {}, ", self.num_traps)?;
         write!(f, "fairies: {}, ", self.num_fairies)?;
         write!(f, "cul-de-sacs: {}", self.num_cul_de_sacs)
