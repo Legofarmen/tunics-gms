@@ -3,6 +3,7 @@ pub mod tunics;
 
 use crate::core::build::BuildPlan;
 use crate::core::feature::FeaturePlan;
+use crate::core::feature::Op;
 use crate::core::floor::FloorPlan;
 use crate::core::floor2::from_forest;
 use crate::core::room::Tree as RoomTree;
@@ -41,6 +42,7 @@ struct Opt {
 #[derive(StructOpt)]
 enum Command {
     BuildPlan,
+    BuildSequence,
     FeaturePlan1,
     FeaturePlan2,
     RoomPlan,
@@ -70,9 +72,7 @@ fn build_plan(seed: u64, opt: Opt) -> (impl Rng, BuildPlan<AugFeature>) {
     )
 }
 
-fn feature_plan1(seed: u64, opt: Opt) -> (impl Rng, FeaturePlan<AugFeature>) {
-    use crate::tunics::get_join_selector;
-    use crate::tunics::get_prepend_selector;
+fn build_sequence(seed: u64, opt: Opt) -> (impl Rng, Vec<Op<AugFeature>>) {
     use crate::tunics::get_traversal_selector;
     use rand::rngs::StdRng;
     use rand::SeedableRng;
@@ -80,17 +80,29 @@ fn feature_plan1(seed: u64, opt: Opt) -> (impl Rng, FeaturePlan<AugFeature>) {
     let (mut rng, build_plan) = build_plan(seed, opt);
 
     let rng1 = StdRng::seed_from_u64(rng.gen());
-    let rng2 = StdRng::seed_from_u64(rng.gen());
-    let rng3 = StdRng::seed_from_u64(rng.gen());
 
     let traversal_selector = get_traversal_selector(rng1, &build_plan);
-    let prepend_selector = get_prepend_selector(rng2);
-    let join_selector = get_join_selector(rng3);
     let build_sequence = build_plan
         .build_sequence(traversal_selector)
         //.inspect(|step| eprintln!("{:?}", step))
         //;
         ;
+    (rng, build_sequence.collect())
+}
+
+fn feature_plan1(seed: u64, opt: Opt) -> (impl Rng, FeaturePlan<AugFeature>) {
+    use crate::tunics::get_join_selector;
+    use crate::tunics::get_prepend_selector;
+    use rand::rngs::StdRng;
+    use rand::SeedableRng;
+
+    let (mut rng, build_sequence) = build_sequence(seed, opt);
+
+    let rng2 = StdRng::seed_from_u64(rng.gen());
+    let rng3 = StdRng::seed_from_u64(rng.gen());
+
+    let prepend_selector = get_prepend_selector(rng2);
+    let join_selector = get_join_selector(rng3);
     (
         rng,
         FeaturePlan::from_steps(join_selector, prepend_selector, build_sequence),
@@ -118,6 +130,17 @@ fn floor_plan(seed: u64, opt: Opt) -> (impl Rng, FloorPlan) {
     (rng, from_forest(room_plan))
 }
 
+fn show_vec<T: std::fmt::Debug>(sequence: Vec<T>) {
+    println!("digraph {{");
+    for (i, elem) in sequence.iter().enumerate() {
+        println!("  elem{} [label=\"{:?}\"];", i, elem);
+        if i > 0 {
+            println!("  elem{} -> elem{};", i - 1, i);
+        }
+    }
+    println!("}}");
+}
+
 fn main() {
     use rand::rngs::ThreadRng;
 
@@ -128,6 +151,9 @@ fn main() {
     match opt.cmd {
         Command::BuildPlan => {
             build_plan(seed, opt).1.show();
+        }
+        Command::BuildSequence => {
+            show_vec(build_sequence(seed, opt).1);
         }
         Command::FeaturePlan1 => {
             feature_plan1(seed, opt).1.show();

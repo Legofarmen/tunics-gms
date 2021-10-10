@@ -75,7 +75,6 @@ impl<T: Ord + std::fmt::Debug> Level<BTreeSet<T>> {
     }
     pub fn insert(&mut self, pos: i8, elem: T) {
         self.get_mut(pos).insert(elem);
-        eprintln!("alloc {:?}", self.cells);
     }
 }
 
@@ -160,14 +159,12 @@ where
             } else if alloc.len() == 1 {
                 let mut alloc = alloc.into_iter();
                 let dir1 = alloc.next().unwrap();
-                eprintln!("alloc {};{} {:?}", x, y, dir1);
                 allocate(&mut next_level, forest, x, y, dir1, &mut floor_plan);
             } else if alloc.len() == 2 {
                 let mut alloc = alloc.into_iter();
                 let (forest1, forest2) = forest.split2();
                 let dir1 = alloc.next().unwrap();
                 let dir2 = alloc.next().unwrap();
-                eprintln!("alloc {};{} {:?} {:?}", x, y, dir1, dir2);
                 allocate(&mut next_level, forest1, x, y, dir1, &mut floor_plan);
                 allocate(&mut next_level, forest2, x, y, dir2, &mut floor_plan);
             } else if alloc.len() == 3 {
@@ -176,7 +173,6 @@ where
                 let dir1 = alloc.next().unwrap();
                 let dir2 = alloc.next().unwrap();
                 let dir3 = alloc.next().unwrap();
-                eprintln!("alloc {};{} {:?} {:?} {:?}", x, y, dir1, dir2, dir3);
                 allocate(&mut next_level, forest1, x, y, dir1, &mut floor_plan);
                 allocate(&mut next_level, forest2, x, y, dir2, &mut floor_plan);
                 allocate(&mut next_level, forest3, x, y, dir3, &mut floor_plan);
@@ -210,16 +206,8 @@ where
     }
     let mut best: Option<Best> = None;
     let mut seen_non_empty = false;
-    //let special = level.weight(0) > 0 && level.linear_weight(0) <= 1;
-    //if special {
-    //seen_non_empty = true;
-    //alloc.insert(0, Dir4::North);
-    //}
     for pos in range.clone() {
         let pos = pos as i8;
-        //if special && pos == 0 {
-        //continue;
-        //}
         if !level.is_empty(pos) {
             seen_non_empty = true;
             if let Some(ref mut best) = &mut best {
@@ -250,17 +238,11 @@ where
     if let Some(Best { pos, .. }) = best {
         let mut pos2 = pos;
         while pos2 >= *range.start() && !level.is_empty(pos2) {
-            //if special && pos2 == 0 {
-            //continue;
-            //}
             alloc.insert(pos2, dir_left);
             pos2 -= 1;
         }
         let mut pos2 = pos;
         while pos2 <= *range.end() && !level.is_empty(pos2) {
-            //if special && pos2 == 0 {
-            //continue;
-            //}
             alloc.insert(pos2, dir_right);
             pos2 += 1;
         }
