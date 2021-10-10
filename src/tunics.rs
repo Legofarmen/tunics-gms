@@ -90,20 +90,17 @@ impl fmt::Display for Contents {
     }
 }
 
-pub fn gen_treasure_set<R: Rng>(rng: &mut R, n: usize) -> HashSet<Item> {
-    let mut all_treasures = vec![
-        Item::BombBag,
-        Item::Bow,
-        Item::Grapple,
-        Item::Glove,
-        Item::Lantern,
-        Item::Flippers,
-    ];
-    let mut treasures = HashSet::new();
-    for _ in 0..n {
-        treasures.insert(all_treasures.swap_remove(rng.gen_range(0..all_treasures.len())));
+impl Item {
+    pub fn all() -> Vec<Item> {
+        vec![
+            Item::BombBag,
+            Item::Bow,
+            Item::Grapple,
+            Item::Glove,
+            Item::Lantern,
+            Item::Flippers,
+        ]
     }
-    treasures
 }
 
 pub struct Config {

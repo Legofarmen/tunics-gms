@@ -8,16 +8,20 @@ use crate::core::floor::FloorPlan;
 use crate::core::floor2::from_forest;
 use crate::core::room::Tree as RoomTree;
 use crate::tunics::AugFeature;
+use crate::tunics::Config;
 use crate::tunics::Contents;
 use crate::tunics::Door;
 use crate::tunics::Feature;
 use crate::tunics::Item;
+use rand::rngs::StdRng;
 use rand::Rng;
+use rand::SeedableRng;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
 struct Opt {
     /// PRNG seed
+    #[structopt(long)]
     seed: Option<u64>,
 
     #[structopt(long, default_value)]
@@ -32,8 +36,8 @@ struct Opt {
     #[structopt(long, default_value)]
     small_keys: usize,
 
-    #[structopt(long)]
-    items: Option<Vec<Item>>,
+    #[structopt(long, default_value = "random")]
+    items: Vec<OptItem>,
 
     #[structopt(subcommand)]
     cmd: Command,
@@ -49,35 +53,31 @@ enum Command {
     FloorPlan,
 }
 
-fn build_plan(seed: u64, opt: Opt) -> (impl Rng, BuildPlan<AugFeature>) {
-    use crate::tunics::gen_treasure_set;
-    use crate::tunics::Config;
-    use rand::rngs::StdRng;
-    use rand::SeedableRng;
-
-    let mut rng = StdRng::seed_from_u64(seed);
-    let items = opt
-        .items
-        .map(|items| items.into_iter().collect())
-        .unwrap_or_else(|| gen_treasure_set(&mut rng, 1));
-    (
-        rng,
-        BuildPlan::from(Config {
-            num_fairies: opt.fairies,
-            num_cul_de_sacs: opt.cul_de_sacs,
-            num_small_keys: opt.small_keys,
-            num_traps: opt.traps,
-            items,
-        }),
-    )
+enum OptItem {
+    Item(Item),
+    Random,
 }
 
-fn build_sequence(seed: u64, opt: Opt) -> (impl Rng, Vec<Op<AugFeature>>) {
-    use crate::tunics::get_traversal_selector;
-    use rand::rngs::StdRng;
-    use rand::SeedableRng;
+impl std::str::FromStr for OptItem {
+    type Err = <Item as std::str::FromStr>::Err;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "random" {
+            Ok(OptItem::Random)
+        } else {
+            Item::from_str(s).map(OptItem::Item)
+        }
+    }
+}
 
-    let (mut rng, build_plan) = build_plan(seed, opt);
+fn build_plan(seed: u64, config: Config) -> (impl Rng, BuildPlan<AugFeature>) {
+    let rng = StdRng::seed_from_u64(seed);
+    (rng, BuildPlan::from(config))
+}
+
+fn build_sequence(seed: u64, config: Config) -> (impl Rng, Vec<Op<AugFeature>>) {
+    use crate::tunics::get_traversal_selector;
+
+    let (mut rng, build_plan) = build_plan(seed, config);
 
     let rng1 = StdRng::seed_from_u64(rng.gen());
 
@@ -90,13 +90,11 @@ fn build_sequence(seed: u64, opt: Opt) -> (impl Rng, Vec<Op<AugFeature>>) {
     (rng, build_sequence.collect())
 }
 
-fn feature_plan1(seed: u64, opt: Opt) -> (impl Rng, FeaturePlan<AugFeature>) {
+fn feature_plan1(seed: u64, config: Config) -> (impl Rng, FeaturePlan<AugFeature>) {
     use crate::tunics::get_join_selector;
     use crate::tunics::get_prepend_selector;
-    use rand::rngs::StdRng;
-    use rand::SeedableRng;
 
-    let (mut rng, build_sequence) = build_sequence(seed, opt);
+    let (mut rng, build_sequence) = build_sequence(seed, config);
 
     let rng2 = StdRng::seed_from_u64(rng.gen());
     let rng3 = StdRng::seed_from_u64(rng.gen());
@@ -109,24 +107,22 @@ fn feature_plan1(seed: u64, opt: Opt) -> (impl Rng, FeaturePlan<AugFeature>) {
     )
 }
 
-fn feature_plan2(seed: u64, opt: Opt) -> (impl Rng, FeaturePlan<Feature>) {
+fn feature_plan2(seed: u64, config: Config) -> (impl Rng, FeaturePlan<Feature>) {
     use crate::tunics::lower;
-    use rand::rngs::StdRng;
-    use rand::SeedableRng;
 
-    let (mut rng, feature_plan) = feature_plan1(seed, opt);
+    let (mut rng, feature_plan) = feature_plan1(seed, config);
     let mut rng4 = StdRng::seed_from_u64(rng.gen());
 
     (rng, lower(&mut rng4, feature_plan))
 }
 
-fn room_plan(seed: u64, opt: Opt) -> (impl Rng, RoomTree<Door, Contents>) {
-    let (rng, feature_plan) = feature_plan2(seed, opt);
+fn room_plan(seed: u64, config: Config) -> (impl Rng, RoomTree<Door, Contents>) {
+    let (rng, feature_plan) = feature_plan2(seed, config);
     (rng, RoomTree::from_feature_plan(feature_plan))
 }
 
-fn floor_plan(seed: u64, opt: Opt) -> (impl Rng, FloorPlan) {
-    let (rng, room_plan) = room_plan(seed, opt);
+fn floor_plan(seed: u64, config: Config) -> (impl Rng, FloorPlan) {
+    let (rng, room_plan) = room_plan(seed, config);
     (rng, from_forest(room_plan))
 }
 
@@ -146,26 +142,49 @@ fn main() {
 
     let opt = Opt::from_args();
     let seed = opt.seed.unwrap_or_else(|| ThreadRng::default().gen());
+
+    let mut rng5 = StdRng::seed_from_u64(seed);
+    let mut all_items = Item::all();
+    let items = opt
+        .items
+        .iter()
+        .map(|item| match item {
+            OptItem::Item(item) => *item,
+            OptItem::Random => {
+                let i = rng5.gen_range(0..all_items.len());
+                all_items.swap_remove(i)
+            }
+        })
+        .collect();
     eprintln!("{}", seed);
+    eprintln!("{:?}", items);
+
+    let config = Config {
+        num_small_keys: opt.small_keys,
+        num_fairies: opt.fairies,
+        num_cul_de_sacs: opt.cul_de_sacs,
+        num_traps: opt.traps,
+        items,
+    };
 
     match opt.cmd {
         Command::BuildPlan => {
-            build_plan(seed, opt).1.show();
+            build_plan(seed, config).1.show();
         }
         Command::BuildSequence => {
-            show_vec(build_sequence(seed, opt).1);
+            show_vec(build_sequence(seed, config).1);
         }
         Command::FeaturePlan1 => {
-            feature_plan1(seed, opt).1.show();
+            feature_plan1(seed, config).1.show();
         }
         Command::FeaturePlan2 => {
-            feature_plan2(seed, opt).1.show();
+            feature_plan2(seed, config).1.show();
         }
         Command::RoomPlan => {
-            room_plan(seed, opt).1.show();
+            room_plan(seed, config).1.show();
         }
         Command::FloorPlan => {
-            floor_plan(seed, opt).1.show();
+            floor_plan(seed, config).1.show();
         }
     };
 }
