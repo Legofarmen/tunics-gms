@@ -4,9 +4,9 @@ function PlayerStateThrow(){
 	PlayerTileCollideLite();
 	PlayerAnimSpr();
 	sprite_index = sPlayerThrow;
+	lift_id.dir = direction;
+	lift_id.state = "thrown";
 	if(animationEnd){
-		lift_id.dir = inputDirection;
-		lift_id.state = "thrown";
 		lift_id = noone;
 		state = "free";
 	}

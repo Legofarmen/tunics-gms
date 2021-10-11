@@ -48,10 +48,7 @@ switch(state){
 
 if(x != goalX || y != goalY){mp_potential_step_object(goalX,goalY,spd,oSolid);}
 
-if(life <=0){
-	instance_create_depth(x,y,depth,oDeath);
-	instance_destroy();
-}
+event_inherited();
 
 if(place_meeting(x,y,oSensor)){
 	knockDir = point_direction(target.x,target.y,x,y);

@@ -1,5 +1,6 @@
 /// @description Insert description here
 // You can write your code in this editor
+
 var _vida = life
 var _vidaFrac = frac(_vida); //Gettea el decimal de la _vida
 _vida -= _vidaFrac;
@@ -8,7 +9,7 @@ var vida_x = 1;
 var vida_y = 1;
 
 var SEPARATION = 12;
-var playerid_buffer = 12;
+var buffer = 12;
 
 for(var i = 1; i <= max_life; i++){
     var _HeartPiece = (i > _vida);
@@ -21,9 +22,5 @@ for(var i = 1; i <= max_life; i++){
         _HeartPiece += (_vidaFrac > 0.25);
         _HeartPiece += (_vidaFrac > 0.5);
     }
-    draw_sprite_ext(sHearts,
-    _HeartPiece,
-    vida_x + (i*SEPARATION),
-    vida_y + playerid_buffer,
-    1,1,0,c_white,1);
+    draw_sprite_ext(sHearts,_HeartPiece, vida_x + (i*SEPARATION), vida_y + buffer, 1,1,0,c_white,1);
 }

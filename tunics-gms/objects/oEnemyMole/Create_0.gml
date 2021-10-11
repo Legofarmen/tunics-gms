@@ -1,5 +1,6 @@
 /// @description Insert description here
 // You can write your code in this editor
+event_inherited();
 move = 0;
 state = "idle";
 localFrame = 0;
@@ -14,11 +15,9 @@ knockY = 0;
 knockDir = 0;
 knock = false;
 
-life = 3;
 hurt = false;
 alarm[0] = 180;
 spd = 0.5;
-flash = 0;
 
 goalX = 0;
 goalY = 0;
