@@ -104,8 +104,8 @@ where
 impl<D, C> Forest<D, C>
 where
     Tree<D, C>: RoomExt,
-    D: fmt::Display,
-    C: fmt::Display,
+    D: fmt::Display + fmt::Debug,
+    C: fmt::Display + fmt::Debug,
 {
     pub fn split2(mut self) -> (Self, Self) {
         self.0
@@ -136,9 +136,7 @@ where
         let mut a_score = 0;
         let mut b_score = 0;
         let mut c_score = 0;
-        eprintln!("split3 {}", &self);
         for tree in self.0.into_iter().rev() {
-            //eprintln!("- {}", &tree);
             a_score += tree.linear_weight();
             a.0.push_back(tree);
             if a_score > b_score {
@@ -149,7 +147,6 @@ where
                 std::mem::swap(&mut b, &mut c);
                 std::mem::swap(&mut b_score, &mut c_score);
             }
-            eprintln!("= {} {} {}", a_score, b_score, c_score);
         }
         (a, c, b)
     }
@@ -157,28 +154,17 @@ where
     /// Pop an item that could be taken out and put in front of the entire forest without
     /// changingen the semantics.
     pub fn pop_tree(mut self) -> Result<(Option<D>, Option<C>, Self), Self> {
-        if self.0.len() == 1 {
-            let Tree {
-                entrance,
-                contents,
-                exits,
-            } = self.0.pop_front().unwrap();
-            return Ok((entrance, contents, exits));
+        self.0.make_contiguous().sort_by_key(Tree::linear_weight);
+        if self.0.back().map(Tree::linear_weight).unwrap_or(0) == 0 {
+            return Err(self);
         }
-        self.0.make_contiguous().sort_by_key(Tree::weight);
-        if self
-            .0
-            .get(0)
-            .map(|tree| !tree.is_boundary() && tree.weight() == 1)
-            .unwrap_or(false)
-        {
-            let Tree {
-                entrance, contents, ..
-            } = self.0.pop_front().unwrap();
-            Ok((entrance, contents, self))
-        } else {
-            Err(self)
-        }
+        let Tree {
+            entrance,
+            contents,
+            exits,
+        } = self.0.pop_back().unwrap();
+        self.0.extend(exits.into_iter());
+        Ok((entrance, contents, self))
     }
 }
 

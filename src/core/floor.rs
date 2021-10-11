@@ -314,16 +314,10 @@ fn assign<D, C>(
     floor_plan: &mut FloorPlan,
 ) where
     Tree<D, C>: RoomExt,
-    D: ToString + fmt::Display,
-    C: ToString + fmt::Display,
+    D: ToString + fmt::Display + fmt::Debug,
+    C: ToString + fmt::Display + fmt::Debug,
 {
-    eprintln!(
-        "{:?} {} {} {}",
-        dir,
-        forest.weight(),
-        forest.linear_weight(),
-        &forest
-    );
+    eprintln!("{};{} {:?} {}", x, y, dir, &forest);
     if forest.is_empty() {
         return;
     }
@@ -335,6 +329,7 @@ fn assign<D, C>(
     };
     let door_coord: DoorCoord4 = (y, x, dir).into();
     let room_coord = door_coord.neighbour();
+    eprintln!("POP {:?}", &forest);
     let forest = match forest.pop_tree() {
         Ok((door, contents, forest)) => {
             let door_label = door
@@ -361,8 +356,8 @@ fn assign<D, C>(
 pub fn from_forest<D, C>(tree: Tree<D, C>) -> FloorPlan
 where
     Tree<D, C>: RoomExt,
-    D: ToString + fmt::Display,
-    C: ToString + fmt::Display,
+    D: ToString + fmt::Display + fmt::Debug,
+    C: ToString + fmt::Display + fmt::Debug,
 {
     let mut floor_plan = FloorPlan::default();
     floor_plan.add_room::<_, String>((-1, 0), None);
