@@ -1,6 +1,6 @@
 use crate::core::feature::FeaturePlan;
 use std::collections::VecDeque;
-use std::fmt::Debug;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct Tree<D, C> {
@@ -12,14 +12,38 @@ pub struct Tree<D, C> {
 #[derive(Debug)]
 pub struct Forest<D, C>(VecDeque<Tree<D, C>>);
 
-pub struct Segment<D, C>(VecDeque<Forest<D, C>>);
-
-impl<D, C> Segment<D, C> {
-    pub fn split_off(&mut self, at: usize) -> Self {
-        Segment(self.0.split_off(at))
+impl<D, C> fmt::Display for Tree<D, C>
+where
+    D: fmt::Display,
+    C: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(entrance) = &self.entrance {
+            write!(f, "{}", entrance)?;
+        }
+        write!(f, ":")?;
+        if let Some(contents) = &self.contents {
+            write!(f, "{}", contents)?;
+        }
+        write!(f, ":{}", self.exits)
     }
-    pub fn pop_left(&mut self) -> Option<Forest<D, C>> {
-        self.0.pop_front()
+}
+
+impl<D, C> fmt::Display for Forest<D, C>
+where
+    D: fmt::Display,
+    C: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[")?;
+        let mut trees = self.0.iter();
+        if let Some(tree) = trees.next() {
+            write!(f, "{}", tree)?;
+        }
+        for tree in trees {
+            write!(f, ",{}", tree)?;
+        }
+        write!(f, "]")
     }
 }
 
@@ -154,7 +178,7 @@ where
 }
 
 pub trait RoomExt: Default {
-    type Feature: Debug;
+    type Feature: fmt::Debug;
 
     fn add_feature(self, feature: Self::Feature) -> Result<Self, (Self::Feature, Self)>;
 
@@ -224,19 +248,23 @@ where
     }
 }
 
-impl<D: Debug, C: Debug> Tree<D, C> {
+impl<D: fmt::Display, C: fmt::Display> Tree<D, C> {
     pub fn show<M: std::fmt::Display>(&self, metadata: M, seed: u64) {
-        fn visit<D: Debug, C: Debug>(room: &Tree<D, C>, parent: usize, id: usize) -> usize {
+        fn visit<D: fmt::Display, C: fmt::Display>(
+            room: &Tree<D, C>,
+            parent: usize,
+            id: usize,
+        ) -> usize {
             let mut next = id + 1;
             for child in &room.exits.0 {
                 next = visit(child, id, next);
             }
             let door = match &room.entrance {
                 None => "".to_string(),
-                Some(door) => format!("{:?}", door),
+                Some(door) => format!("{}", door),
             };
             if let Some(contents) = &room.contents {
-                println!("  room{} [label=\"{:?}\"];", id, contents);
+                println!("  room{} [label=\"{}\"];", id, contents);
             } else {
                 println!("  room{} [label=\"\"];", id);
             }

@@ -86,7 +86,12 @@ pub enum Contents {
 
 impl fmt::Display for Contents {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            Contents::BigChest(treasure) => write!(f, "#{:?}", treasure),
+            Contents::SmallChest(treasure) => write!(f, "+{:?}", treasure),
+            Contents::SecretChest(treasure) => write!(f, "?{:?}", treasure),
+            contents => write!(f, "{:?}", contents),
+        }
     }
 }
 

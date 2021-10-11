@@ -3,9 +3,8 @@ use crate::core::room::RoomExt;
 use crate::core::room::Tree;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
+use std::fmt;
 use std::ops::RangeInclusive;
-
-use std::fmt::Debug;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 enum Dir2 {
@@ -315,16 +314,19 @@ fn assign<D, C>(
     floor_plan: &mut FloorPlan,
 ) where
     Tree<D, C>: RoomExt,
-    D: ToString + Debug,
-    C: ToString + Debug,
+    D: ToString + fmt::Display,
+    C: ToString + fmt::Display,
 {
     eprintln!(
-        "{:?} {} {} {:?}",
+        "{:?} {} {} {}",
         dir,
         forest.weight(),
         forest.linear_weight(),
         &forest
     );
+    if forest.is_empty() {
+        return;
+    }
     let delta = match dir {
         Dir4::North => 0,
         Dir4::East => 1,
@@ -359,8 +361,8 @@ fn assign<D, C>(
 pub fn from_forest<D, C>(tree: Tree<D, C>) -> FloorPlan
 where
     Tree<D, C>: RoomExt,
-    D: ToString + std::fmt::Debug,
-    C: ToString + std::fmt::Debug,
+    D: ToString + fmt::Display,
+    C: ToString + fmt::Display,
 {
     let mut floor_plan = FloorPlan::default();
     floor_plan.add_room::<_, String>((-1, 0), None);
@@ -439,8 +441,8 @@ fn alloc_half<D, C>(
 ) -> bool
 where
     Tree<D, C>: RoomExt,
-    D: std::fmt::Debug,
-    C: std::fmt::Debug,
+    D: fmt::Display,
+    C: fmt::Display,
 {
     #[derive(Debug)]
     struct Best {
