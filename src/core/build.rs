@@ -217,8 +217,8 @@ impl<A: Debug> BuildPlan<A> {
         println!("digraph {{");
         println!("  labelloc=\"t\";");
         println!(
-            "  label=<<b>Build plan</b><br/>{}<br/>seed: {}>;",
-            metadata, seed
+            "  label=<<b>Build plan</b><br/>seed: {}<br/>{}>;",
+            seed, metadata,
         );
         for (i, op) in self.steps.iter().enumerate() {
             println!("  step{} [label=\"{:?}\"];", i, op);

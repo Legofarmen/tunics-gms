@@ -122,8 +122,8 @@ where
         println!("graph {{");
         println!("  labelloc=\"t\";");
         println!(
-            "  label=<<b>{}</b><br/>{}<br/>seed: {}>;",
-            title, metadata, seed
+            "  label=<<b>{}</b><br/>seed: {}<br/>{}>;",
+            title, seed, metadata,
         );
         println!("  rankdir=BT;");
         visit(self, 0, 0);

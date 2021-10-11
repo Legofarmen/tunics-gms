@@ -270,8 +270,8 @@ impl<D: fmt::Display, C: fmt::Display> Tree<D, C> {
         println!("graph {{");
         println!("  labelloc=\"t\";");
         println!(
-            "  label=<<b>Room plan</b><br/>{}<br/>seed: {}>;",
-            metadata, seed
+            "  label=<<b>Room plan</b><br/>seed: {}<br/>{}>;",
+            seed, metadata,
         );
         visit(self, 0, 0);
         println!("}}");
