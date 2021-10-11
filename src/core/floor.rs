@@ -136,7 +136,6 @@ impl FloorPlan {
     {
         use std::collections::btree_map::Entry;
         let coord = coord.into();
-        //eprintln!("room {};{}", coord.x, coord.y);
         match self.rooms.entry(coord) {
             Entry::Occupied(_) => {
                 panic!("room already exist: ({};{})", coord.x, coord.y);
@@ -156,12 +155,6 @@ impl FloorPlan {
 
         let door_coord4 = door_coord4.into();
         let door_coord2 = DoorCoord2::from(door_coord4);
-        /*
-        eprintln!(
-            "door {};{} {:?}",
-            door_coord4.coord.x, door_coord4.coord.y, door_coord4.dir
-        );
-        */
         if !self.rooms.contains_key(&door_coord2.coord) {
             panic!(
                 "room doest not exist: ({};{})",
@@ -322,10 +315,16 @@ fn assign<D, C>(
     floor_plan: &mut FloorPlan,
 ) where
     Tree<D, C>: RoomExt,
-    D: ToString,
-    C: ToString,
+    D: ToString + Debug,
+    C: ToString + Debug,
 {
-    eprintln!("{:?} {}", dir, forest.weight());
+    eprintln!(
+        "{:?} {} {} {:?}",
+        dir,
+        forest.weight(),
+        forest.linear_weight(),
+        &forest
+    );
     let delta = match dir {
         Dir4::North => 0,
         Dir4::East => 1,
@@ -386,16 +385,9 @@ where
         eprintln!("# depth {}", depth);
         let mut alloc = Level::new_sets(depth);
 
-        eprintln!(
-            "level {:?}",
-            &level.cells.iter().map(|f| f.weight()).collect::<Vec<_>>()
-        );
-
         seen_non_empty = false
             | alloc_half(&level, &mut alloc, -depth..=0, Dir4::West, Dir4::North)
             | alloc_half(&level, &mut alloc, 0..=depth, Dir4::North, Dir4::East);
-
-        eprintln!("alloc {:?}", &alloc.cells);
 
         let mut next_level = Level::<Forest<D, C>>::new_forests(depth + 1);
         for (i, (forest, alloc)) in level
@@ -406,7 +398,6 @@ where
         {
             let x = i as i8 - depth;
             let y = depth - x.abs();
-            eprintln!("a {:?}", &alloc);
             if alloc.len() == 0 {
             } else if alloc.len() == 1 {
                 let mut alloc = alloc.into_iter();
