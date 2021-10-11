@@ -317,7 +317,6 @@ fn assign<D, C>(
     D: ToString + fmt::Display + fmt::Debug,
     C: ToString + fmt::Display + fmt::Debug,
 {
-    eprintln!("{};{} {:?} {}", x, y, dir, &forest);
     if forest.is_empty() {
         return;
     }
@@ -329,7 +328,6 @@ fn assign<D, C>(
     };
     let door_coord: DoorCoord4 = (y, x, dir).into();
     let room_coord = door_coord.neighbour();
-    eprintln!("POP {:?}", &forest);
     let forest = match forest.pop_tree() {
         Ok((door, contents, forest)) => {
             let door_label = door
