@@ -1,5 +1,19 @@
 # Overview
 
+This is a reference implementation of a procedural dungeon genreration
+algorithm.
+
+## Why Rust?
+
+The originally implementation of this is in Lua and it's somewhat messy.
+If I was to refactor that I'd risk introducing more problems than I'd solve
+because there is very little tool support for finding the bugs.
+With a powerful type system you can shift a lot of bugs from being run-time bugs
+into being compile-time bugs.
+Instead of refactoring the Lua implementation into a shape where I'd be able to
+document it, I opted to reimplement it in a language with a powerful type
+system.
+
 # Dependencies
 
 * Cargo
