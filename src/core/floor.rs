@@ -448,13 +448,12 @@ where
         let pos = pos as i8;
         if !level.is_empty(pos) {
             seen_non_empty = true;
+            let score = level.score(pos);
             if let Some(ref mut best) = &mut best {
-                let score = level.score(pos);
-                if score > best.score {
+                if score < best.score {
                     *best = Best { pos, score };
                 }
             } else {
-                let score = level.score(pos);
                 best = Some(Best { pos, score });
             }
         } else {
