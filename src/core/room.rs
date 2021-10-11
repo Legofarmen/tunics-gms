@@ -104,6 +104,8 @@ where
 impl<D, C> Forest<D, C>
 where
     Tree<D, C>: RoomExt,
+    D: fmt::Display,
+    C: fmt::Display,
 {
     pub fn split2(mut self) -> (Self, Self) {
         self.0
@@ -114,7 +116,7 @@ where
         let mut a_score = 0;
         let mut b_score = 0;
         for tree in self.0.into_iter().rev() {
-            a_score += tree.exits.linear_weight();
+            a_score += tree.linear_weight();
             a.0.push_back(tree);
             if a_score > b_score {
                 std::mem::swap(&mut a, &mut b);
@@ -134,8 +136,10 @@ where
         let mut a_score = 0;
         let mut b_score = 0;
         let mut c_score = 0;
+        eprintln!("split3 {}", &self);
         for tree in self.0.into_iter().rev() {
-            a_score += tree.exits.linear_weight();
+            //eprintln!("- {}", &tree);
+            a_score += tree.linear_weight();
             a.0.push_back(tree);
             if a_score > b_score {
                 std::mem::swap(&mut a, &mut b);
@@ -145,6 +149,7 @@ where
                 std::mem::swap(&mut b, &mut c);
                 std::mem::swap(&mut b_score, &mut c_score);
             }
+            eprintln!("= {} {} {}", a_score, b_score, c_score);
         }
         (a, c, b)
     }
@@ -245,6 +250,11 @@ where
     pub fn weight(&self) -> usize {
         let (tot, _, _) = self.weights();
         tot
+    }
+
+    pub fn linear_weight(&self) -> usize {
+        let (_, bnd, app) = self.weights();
+        bnd + app
     }
 }
 
