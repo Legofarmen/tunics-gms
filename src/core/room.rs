@@ -154,7 +154,10 @@ where
     /// Pop an item that could be taken out and put in front of the entire forest without
     /// changingen the semantics.
     pub fn pop_tree(mut self) -> Result<(Option<D>, Option<C>, Self), Self> {
-        self.0.make_contiguous().sort_by_key(Tree::linear_weight);
+        self.0.make_contiguous().sort_by_key(|tree| {
+            let (_, bnd, app) = tree.weights();
+            (bnd, app)
+        });
         if self.0.back().map(Tree::linear_weight).unwrap_or(0) == 0 {
             return Err(self);
         }
