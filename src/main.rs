@@ -175,7 +175,7 @@ fn main() {
 
     match opt.cmd {
         Command::BuildPlan => {
-            build_plan(seed, &config).1.show(config, seed);
+            build_plan(seed, &config).1.show(config);
         }
         Command::BuildSequence => {
             show_vec(

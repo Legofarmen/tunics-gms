@@ -213,13 +213,10 @@ where
 }
 
 impl<A: Debug> BuildPlan<A> {
-    pub fn show<M: std::fmt::Display>(&self, metadata: M, seed: u64) {
+    pub fn show<M: std::fmt::Display>(&self, metadata: M) {
         println!("digraph {{");
         println!("  labelloc=\"t\";");
-        println!(
-            "  label=<<b>Build plan</b><br/>seed: {}<br/>{}>;",
-            seed, metadata,
-        );
+        println!("  label=<<b>Build plan</b><br/>{}>;", metadata,);
         for (i, op) in self.steps.iter().enumerate() {
             println!("  step{} [label=\"{:?}\"];", i, op);
         }
