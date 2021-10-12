@@ -200,7 +200,7 @@ impl FloorPlan {
         println!("  layout=neato;");
         println!("  labelloc=\"t\";");
         println!(
-            "  label=<<b>Floor plan</b><br/>seed: {}<br/>{}>;",
+            "  label=<<b>Floor plan (phase 6)</b><br/>seed: {}<br/>{}>;",
             seed, metadata,
         );
         println!("  node [shape=record, width=\"1\", height=\"1\"];");

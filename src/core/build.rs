@@ -216,7 +216,7 @@ impl<A: Debug> BuildPlan<A> {
     pub fn show<M: std::fmt::Display>(&self, metadata: M) {
         println!("digraph {{");
         println!("  labelloc=\"t\";");
-        println!("  label=<<b>Build plan</b><br/>{}>;", metadata,);
+        println!("  label=<<b>Build plan (phase 1)</b><br/>{}>;", metadata,);
         for (i, op) in self.steps.iter().enumerate() {
             println!("  step{} [label=\"{:?}\"];", i, op);
         }

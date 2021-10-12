@@ -180,7 +180,7 @@ fn main() {
         Command::BuildSequence => {
             show_vec(
                 build_sequence(seed, &config).1,
-                "Build sequence",
+                "Build sequence (phase 2)",
                 config,
                 seed,
             );
@@ -188,12 +188,12 @@ fn main() {
         Command::FeaturePlan1 => {
             feature_plan1(seed, &config)
                 .1
-                .show("Feature plan 1", config, seed);
+                .show("Feature plan 1 (phase 3)", config, seed);
         }
         Command::FeaturePlan2 => {
             feature_plan2(seed, &config)
                 .1
-                .show("Feature plan 2", config, seed);
+                .show("Feature plan 2 (phase 4)", config, seed);
         }
         Command::RoomPlan => {
             room_plan(seed, &config).1.show(config, seed);
