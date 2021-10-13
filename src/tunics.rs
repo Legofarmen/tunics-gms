@@ -220,17 +220,11 @@ impl From<Config> for BuildPlan<AugFeature> {
         if let Some(weak_wall) = build_plan.index(Op::PrependEach(AugFeature::Feature(
             Feature::Door(Door::WeakWall),
         ))) {
-            let very_weak_wall = build_plan
-                .index(Op::PrependEach(AugFeature::Feature(Feature::Door(
-                    Door::VeryWeakWall,
-                ))))
-                .unwrap();
-            build_plan.arc(very_weak_wall, weak_wall);
-            build_plan.arc(map, very_weak_wall);
+            build_plan.arc(weak_wall, map);
         } else {
-            build_plan.arc(map, boss);
+            build_plan.arc(entrance, map);
         }
-        build_plan.arc(entrance, map);
+        build_plan.arc(map, boss);
 
         build_plan
     }
@@ -273,10 +267,7 @@ impl FromStr for Item {
 impl Item {
     fn get_obstacles(self) -> &'static [Feature] {
         match self {
-            Item::BombBag => &[
-                Feature::Door(Door::WeakWall),
-                Feature::Door(Door::VeryWeakWall),
-            ],
+            Item::BombBag => &[Feature::Door(Door::WeakWall)],
             Item::Glove => &[Feature::Room(Contents::Rubble)],
             Item::Grapple => &[Feature::Room(Contents::Chasm)],
             Item::Flippers => &[Feature::Room(Contents::Mote)],
@@ -297,53 +288,72 @@ pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> Feat
         rng: &mut R,
         tree: FeaturePlan<AugFeature>,
         is_below: bool,
-    ) -> FeaturePlan<Feature> {
+    ) -> (FeaturePlan<Feature>, bool) {
         match tree {
             FeaturePlan::Feature(
                 AugFeature::Feature(Feature::Room(Contents::SmallChest(treasure))),
                 next,
             ) if is_below => {
-                let next = visit(rng, *next, true);
-                //if rng.gen_bool(0.5) {
-                next.prepended(Feature::Room(Contents::SecretChest(treasure)))
-                //} else {
-                //next.prepended(Feature::Room(Contents::SmallChest(treasure)))
-                //}
+                let (next, has_map) = visit(rng, *next, true);
+                (
+                    next.prepended(Feature::Room(Contents::SecretChest(treasure))),
+                    has_map || treasure == Treasure::Map,
+                )
+            }
+            FeaturePlan::Feature(AugFeature::Feature(Feature::Door(Door::WeakWall)), next) => {
+                let (next, has_map) = visit(rng, *next, true);
+                if has_map {
+                    (next.prepended(Feature::Door(Door::VeryWeakWall)), has_map)
+                } else {
+                    (next.prepended(Feature::Door(Door::WeakWall)), has_map)
+                }
             }
             FeaturePlan::Feature(AugFeature::Feature(Feature::Room(Contents::Boss)), next) => {
-                let next = visit(rng, *next, is_below);
-                next.prepended(Feature::Room(Contents::Boss))
-                    .prepended(Feature::Door(Door::BigKeyLock))
-                    .prepended(Feature::Room(Contents::Empty))
+                let (next, has_map) = visit(rng, *next, is_below);
+                (
+                    next.prepended(Feature::Room(Contents::Boss))
+                        .prepended(Feature::Door(Door::BigKeyLock))
+                        .prepended(Feature::Room(Contents::Empty)),
+                    has_map,
+                )
             }
             FeaturePlan::Feature(
                 AugFeature::Feature(Feature::Room(Contents::CombatChallenge)),
                 next,
             ) => {
-                let next = visit(rng, *next, is_below);
-                next.prepended(Feature::Room(Contents::CombatChallenge))
-                    .prepended(Feature::Door(Door::Trap))
+                let (next, has_map) = visit(rng, *next, is_below);
+                (
+                    next.prepended(Feature::Room(Contents::CombatChallenge))
+                        .prepended(Feature::Door(Door::Trap)),
+                    has_map,
+                )
             }
             FeaturePlan::Feature(
                 AugFeature::Feature(Feature::Door(Door::DungeonEntrance)),
                 next,
             ) => {
-                let next = visit(rng, *next, is_below);
-                next.prepended(Feature::Room(Contents::Empty))
-                    .prepended(Feature::Door(Door::DungeonEntrance))
+                let (next, has_map) = visit(rng, *next, is_below);
+                (
+                    next.prepended(Feature::Room(Contents::Empty))
+                        .prepended(Feature::Door(Door::DungeonEntrance)),
+                    has_map,
+                )
             }
             FeaturePlan::Feature(AugFeature::Feature(feature), next) => {
-                visit(rng, *next, is_below).prepended(feature)
+                let (next, has_map) = visit(rng, *next, is_below);
+                (next.prepended(feature), has_map)
             }
             FeaturePlan::Branch(nodes) => nodes
                 .into_iter()
                 .map(|node| visit(rng, node, is_below))
-                .reduce(|acc, node| acc.join(node))
-                .unwrap_or_else(|| FeaturePlan::default()),
+                .reduce(|(acc, acc_has_map), (node, has_map)| {
+                    (acc.join(node), acc_has_map | has_map)
+                })
+                .unwrap_or_else(|| (FeaturePlan::default(), false)),
             FeaturePlan::Feature(AugFeature::HideSmallChests, next) => visit(rng, *next, true),
         }
     }
-    visit(rng, feature_plan, false)
+    visit(rng, feature_plan, false).0
 }
 
 pub fn get_traversal_selector<R>(
