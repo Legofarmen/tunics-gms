@@ -277,10 +277,19 @@ impl Item {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum AugFeature {
     Feature(Feature),
     HideSmallChests,
+}
+
+impl fmt::Debug for AugFeature {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AugFeature::Feature(feature) => feature.fmt(f),
+            AugFeature::HideSmallChests => write!(f, "< HideSmallChests >"),
+        }
+    }
 }
 
 pub fn lower<R: Rng>(rng: &mut R, feature_plan: FeaturePlan<AugFeature>) -> FeaturePlan<Feature> {
