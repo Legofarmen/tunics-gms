@@ -1,4 +1,5 @@
 use crate::core::feature::FeaturePlan;
+use crate::core::floor::Dir4;
 use std::collections::VecDeque;
 use std::fmt;
 
@@ -228,9 +229,12 @@ where
     }
 
     /// Pop an item that could be taken out and put in front of the entire forest without
-    /// changingen the semantics.
-    pub fn pop_tree(mut self) -> Result<(Option<D>, Option<C>, Self), Self> {
+    /// changingen the semantics of the whole.
+    pub fn pop_tree(mut self, dir: Dir4) -> Result<(Option<D>, Option<C>, Self), Self> {
         if self.linear_weight() == 0 {
+            return Err(self);
+        }
+        if self.0.iter().all(|tree| !tree.is_dir_compatible(dir)) {
             return Err(self);
         }
         self.0.make_contiguous().sort_by_key(|tree| {
@@ -253,6 +257,8 @@ pub trait RoomExt: Default {
     fn add_feature(self, feature: Self::Feature) -> Result<Self, (Self::Feature, Self)>;
 
     fn is_boundary(&self) -> bool;
+
+    fn is_dir_compatible(&self, dir: Dir4) -> bool;
 }
 
 impl<D, C> Default for Tree<D, C> {

@@ -328,7 +328,7 @@ fn assign<D, C>(
     };
     let door_coord: DoorCoord4 = (y, x, dir).into();
     let room_coord = door_coord.neighbour();
-    let forest = match forest.pop_tree() {
+    let forest = match forest.pop_tree(dir) {
         Ok((door, contents, forest)) => {
             let door_label = door
                 .as_ref()

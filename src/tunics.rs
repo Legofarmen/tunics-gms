@@ -2,6 +2,7 @@ use crate::core::build::BuildPlan;
 use crate::core::build::Index;
 use crate::core::feature::FeaturePlan;
 use crate::core::feature::Op;
+use crate::core::floor::Dir4;
 use crate::core::room::RoomExt;
 use crate::core::room::Tree as RoomTree;
 use rand::Rng;
@@ -454,6 +455,10 @@ impl RoomExt for RoomTree<Door, Contents> {
             | Some(Contents::CombatChallenge) => true,
             _ => false,
         }
+    }
+
+    fn is_dir_compatible(&self, dir: Dir4) -> bool {
+        !(dir != Dir4::North && self.entrance == Some(Door::BigKeyLock))
     }
 
     fn add_feature(mut self, feature: Feature) -> Result<Self, (Feature, Self)> {
