@@ -107,15 +107,45 @@ where
     D: fmt::Display + fmt::Debug,
     C: fmt::Display + fmt::Debug,
 {
-    pub fn split2(mut self) -> (Self, Self) {
-        self.0
-            .make_contiguous()
-            .sort_by_key(|tree| tree.exits.linear_weight());
+    pub fn split2(self) -> (Self, Self) {
         let mut a = Forest::new();
         let mut b = Forest::new();
         let mut a_score = 0;
         let mut b_score = 0;
-        for tree in self.0.into_iter().rev() {
+        let (mut boundaries, mut others): (Vec<_>, Vec<_>) =
+            self.0.into_iter().partition(|tree| tree.is_boundary());
+        boundaries.sort_by_key(|tree| tree.exits.linear_weight());
+        others.sort_by_key(|tree| tree.exits.linear_weight());
+
+        // Spread boundaries evently across result forests, making a halfhearted effort also
+        // keeping even linear weight.
+        while !boundaries.is_empty() {
+            if let Some(tree) = boundaries.pop() {
+                b_score += tree.linear_weight();
+                b.0.push_back(tree);
+            }
+            if let Some(tree) = boundaries.pop() {
+                a_score += tree.linear_weight();
+                a.0.push_back(tree);
+            }
+            if let Some(tree) = boundaries.pop() {
+                a_score += tree.linear_weight();
+                a.0.push_back(tree);
+            }
+            if let Some(tree) = boundaries.pop() {
+                b_score += tree.linear_weight();
+                b.0.push_back(tree);
+            }
+        }
+
+        // Make a <= b <= c
+        if a_score > b_score {
+            std::mem::swap(&mut a, &mut b);
+            std::mem::swap(&mut a_score, &mut b_score);
+        }
+
+        // Make a decent effort to minimize difference in linear weight between result forests
+        for tree in others.into_iter().rev() {
             a_score += tree.linear_weight();
             a.0.push_back(tree);
             if a_score > b_score {
@@ -126,17 +156,63 @@ where
         (b, a)
     }
 
-    pub fn split3(mut self) -> (Self, Self, Self) {
-        self.0
-            .make_contiguous()
-            .sort_by_key(|tree| tree.exits.linear_weight());
+    pub fn split3(self) -> (Self, Self, Self) {
         let mut a = Forest::new();
         let mut b = Forest::new();
         let mut c = Forest::new();
         let mut a_score = 0;
         let mut b_score = 0;
         let mut c_score = 0;
-        for tree in self.0.into_iter().rev() {
+        let (mut boundaries, mut others): (Vec<_>, Vec<_>) =
+            self.0.into_iter().partition(|tree| tree.is_boundary());
+        boundaries.sort_by_key(|tree| tree.exits.linear_weight());
+        others.sort_by_key(|tree| tree.exits.linear_weight());
+
+        // Spread boundaries evently across result forests, making a halfhearted effort also
+        // keeping even linear weight.
+        while !boundaries.is_empty() {
+            if let Some(tree) = boundaries.pop() {
+                c_score += tree.linear_weight();
+                c.0.push_back(tree);
+            }
+            if let Some(tree) = boundaries.pop() {
+                b_score += tree.linear_weight();
+                b.0.push_back(tree);
+            }
+            if let Some(tree) = boundaries.pop() {
+                a_score += tree.linear_weight();
+                a.0.push_back(tree);
+            }
+            if let Some(tree) = boundaries.pop() {
+                a_score += tree.linear_weight();
+                a.0.push_back(tree);
+            }
+            if let Some(tree) = boundaries.pop() {
+                b_score += tree.linear_weight();
+                b.0.push_back(tree);
+            }
+            if let Some(tree) = boundaries.pop() {
+                c_score += tree.linear_weight();
+                c.0.push_back(tree);
+            }
+        }
+
+        // Make a <= b <= c
+        if a_score > b_score {
+            std::mem::swap(&mut a, &mut b);
+            std::mem::swap(&mut a_score, &mut b_score);
+        }
+        if b_score > c_score {
+            std::mem::swap(&mut b, &mut c);
+            std::mem::swap(&mut b_score, &mut c_score);
+        }
+        if a_score > b_score {
+            std::mem::swap(&mut a, &mut b);
+            std::mem::swap(&mut a_score, &mut b_score);
+        }
+
+        // Make a decent effort to minimize difference in linear weight between result forests
+        for tree in others.into_iter().rev() {
             a_score += tree.linear_weight();
             a.0.push_back(tree);
             if a_score > b_score {
