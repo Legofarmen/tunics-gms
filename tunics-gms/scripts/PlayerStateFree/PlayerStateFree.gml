@@ -28,8 +28,8 @@ function PlayerStateFree(){
 
 	if(inputAtk){
 		localFrame = 0;
-		audio_play_sound(sndSwing,0,0);
 		state = "atk";
+		if(state == "atk")audio_play_sound(sndSwing,0,0);
 		}
 	
 	//Lift jar/grass/etc

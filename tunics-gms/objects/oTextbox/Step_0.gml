@@ -1,10 +1,11 @@
 /// @description aaa
 var der = oCamera.view_width;
+var buffer = 20;
 lerpProgress += (1 - lerpProgress)/50;
 textProgress += 0.75;
 
-x1 = lerp(x1,0,lerpProgress);
-x2 = lerp(x2,der,lerpProgress);
+x1 = lerp(x1,buffer,lerpProgress);
+x2 = lerp(x2,der-buffer,lerpProgress);
 
 if(keyboard_check_pressed(global.key_interact)){
 	var _length = string_length(text[page]);

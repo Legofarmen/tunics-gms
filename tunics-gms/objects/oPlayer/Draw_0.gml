@@ -4,7 +4,7 @@ draw_sprite_ext(capeNshirt,image_index,x,y,1,1,0,c_black,1); //Draw White Cape a
 draw_self(); //Draw Base
 #region Draw Sword
 if(state="atk" && localFrame > 0){
-	draw_sprite_ext(sPlayerSword,image_index,x,y,1,1,0,c_orange,1);
+	draw_sprite_ext(sPlayerSword,image_index,x,y,1,1,0,c_white,1);
 	if(!instance_exists(oSensor)){
 		instance_create_depth(x,y,0,oSensor);
 	}else{
