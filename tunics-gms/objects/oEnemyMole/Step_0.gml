@@ -49,9 +49,25 @@ switch(state){
 if(x != goalX || y != goalY){mp_potential_step_object(goalX,goalY,spd,oSolid);}
 
 event_inherited();
+var dmg_x = 0; var dmg_y = 0;
+var _thrown = collision_rectangle(x-6,y-6,x+6,y+6,oJar,1,1);
+var _atkd = place_meeting(x,y,oSensor);
+var _contact = false;
 
-if(place_meeting(x,y,oSensor)){
-	knockDir = point_direction(target.x,target.y,x,y);
+if(_atkd && target){
+	_contact = true;
+	dmg_x = target.x;
+	dmg_y = target.y;
+}
+
+if(_thrown && _thrown.state == "thrown"){
+	_contact = true;
+	dmg_x = _thrown.x;
+	dmg_y = _thrown.y;
+}
+
+if(_contact){
+	knockDir = point_direction(dmg_x,dmg_y,x,y);
 	if(!hurt){
 		audio_play_sound(sndHit,0,0);
 		life--;

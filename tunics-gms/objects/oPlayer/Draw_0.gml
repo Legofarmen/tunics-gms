@@ -29,7 +29,6 @@ if(flash > 0){
     }
 #endregion
 
-
 if(toggle_aim){
 	draw_sprite(sCrosshair,0,x+lengthdir_x(24,direction),y-12+lengthdir_y(24,direction));
 }

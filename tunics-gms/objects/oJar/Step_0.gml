@@ -7,7 +7,6 @@ switch(state){
 	case "destroy" : 
 		image_speed = 0; 
 		image_index = image_number-1;
-		image_angle = 0;
 		depth = 0;
 	break;
 	case "thrown":	
@@ -15,7 +14,6 @@ switch(state){
 		z+=z_increment;
 		z_increment-=0.2;
 		z = clamp(z,0,28);
-		image_angle -= 2;
 		var len = 2.5;
 		moveX = lengthdir_x(len,dir);
 		moveY = lengthdir_y(len,dir);
@@ -23,9 +21,6 @@ switch(state){
 			moveX = 0;
 			moveY = 0;
 			image_speed = 1;
-			if(image_index >= 1){
-				image_angle = 0;
-				}
 		}
 		if(!tile_meeting(x+moveX,y,"collision")){
 				x += moveX;

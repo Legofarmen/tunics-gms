@@ -6,9 +6,6 @@ function PlayerStateFree(){
 	moveY = lengthdir_y(inputMagnitude * spd, inputDirection)+knockY;
 
 	PlayerTileCollide();
-	if(instance_exists(oSolid)){
-		PlayerSolidCollide();
-	}
 
 	//Update Sprite
 	var _oldSprite = sprite_index;
@@ -37,11 +34,14 @@ function PlayerStateFree(){
 	
 	//Lift jar/grass/etc
 	var obj = noone;
-	if(place_meeting(x,y,oJar) && moveX=0 && moveY=0){
-		obj = instance_nearest(x,y,oJar);
-	};
-	if(obj!=noone && obj.state=="idle"){
-		if(inputPressInteract){
+	var aim_x = lengthdir_x(16,direction);
+	var aim_y = lengthdir_y(16,direction);
+	if(moveX=0 && moveY=0){
+		obj = collision_line(x,y,x+aim_x,y+aim_y,oJar,1,1);
+	}
+	
+	if(obj != noone){
+		if(obj.state=="idle" && inputPressInteract){
 			lift_id = obj;
 			state = "lift";
 		}

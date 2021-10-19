@@ -8,7 +8,6 @@ function PlayerSolidCollide(){
 			}
 			moveX = 0;
 		}
-	x+= moveX;
 	
 	//Vertical
 	if(place_meeting(x,y+moveY,oSolid)){
@@ -18,5 +17,4 @@ function PlayerSolidCollide(){
 			}
 			moveY = 0;
 		}
-	y+= moveY;
 }
