@@ -64,6 +64,7 @@
     {"name":"sShadowSmall","order":12,"path":"sprites/sShadowSmall/sShadowSmall.yy",},
     {"name":"sPlayerAtkColor","order":17,"path":"sprites/sPlayerAtkColor/sPlayerAtkColor.yy",},
     {"name":"sPlayerThrow","order":7,"path":"sprites/sPlayerThrow/sPlayerThrow.yy",},
+    {"name":"rm_inside","order":2,"path":"rooms/rm_inside/rm_inside.yy",},
     {"name":"lang_swedish","order":2,"path":"scripts/lang_swedish/lang_swedish.yy",},
     {"name":"sPlayerMask","order":19,"path":"sprites/sPlayerMask/sPlayerMask.yy",},
     {"name":"receive_packet_client","order":4,"path":"scripts/receive_packet_client/receive_packet_client.yy",},

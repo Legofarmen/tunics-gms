@@ -89,6 +89,7 @@
     {"id":{"name":"sShadowSmall","path":"sprites/sShadowSmall/sShadowSmall.yy",},"order":12,},
     {"id":{"name":"sPlayerAtkColor","path":"sprites/sPlayerAtkColor/sPlayerAtkColor.yy",},"order":17,},
     {"id":{"name":"sPlayerThrow","path":"sprites/sPlayerThrow/sPlayerThrow.yy",},"order":7,},
+    {"id":{"name":"rm_inside","path":"rooms/rm_inside/rm_inside.yy",},"order":0,},
     {"id":{"name":"lang_swedish","path":"scripts/lang_swedish/lang_swedish.yy",},"order":2,},
     {"id":{"name":"sPlayerMask","path":"sprites/sPlayerMask/sPlayerMask.yy",},"order":19,},
     {"id":{"name":"receive_packet_client","path":"scripts/receive_packet_client/receive_packet_client.yy",},"order":4,},
@@ -137,6 +138,7 @@
   "RoomOrderNodes": [
     {"roomId":{"name":"rm_menu","path":"rooms/rm_menu/rm_menu.yy",},},
     {"roomId":{"name":"rm_test","path":"rooms/rm_test/rm_test.yy",},},
+    {"roomId":{"name":"rm_inside","path":"rooms/rm_inside/rm_inside.yy",},},
   ],
   "TextureGroups": [
     {"resourceType":"GMTextureGroup","resourceVersion":"1.3","name":"Default","autocrop":true,"border":2,"compressFormat":"bz2","directory":"","groupParent":null,"isScaled":true,"loadType":"default","mipsToGenerate":0,"targets":-1,},
