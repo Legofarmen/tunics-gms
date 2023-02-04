@@ -1,11 +1,10 @@
 {
-  "type": 1,
+  "resourceType": "GMShader",
+  "resourceVersion": "1.0",
+  "name": "shFlashColor",
   "parent": {
     "name": "Shaders",
     "path": "folders/Shaders.yy",
   },
-  "resourceVersion": "1.0",
-  "name": "shFlashColor",
-  "tags": [],
-  "resourceType": "GMShader",
+  "type": 1,
 }

@@ -9,9 +9,5 @@ if(animationEnd){
 	with(oSensor) instance_destroy();
 	}
 
-if(inputAtk){
-	localFrame = 0;
-	audio_play_sound(sndSwing,0,0);
-	}
 PlayerTileCollideLite();
 }
