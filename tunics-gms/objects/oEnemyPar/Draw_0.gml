@@ -1,5 +1,5 @@
 /// @description Hitflash
-draw_sprite(sprite_index,image_index,x,y-z);
+draw_sprite_ext(sprite_index,image_index,x,y-z,image_xscale,image_yscale,image_angle,c_white,1);
 #region Hitflash
 if(flash > 0){
     flash -= 0.03;

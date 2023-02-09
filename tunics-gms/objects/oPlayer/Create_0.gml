@@ -19,3 +19,4 @@ max_life = 3;
 lift_id = noone;
 socket = 0;
 toggle_aim = false;
+interact_text = ""

@@ -1,6 +1,6 @@
 /// @description Draw Cape first, then base
 var capeNshirt = asset_get_index(sprite_get_name(sprite_index) + "Color");
-draw_sprite_ext(capeNshirt,image_index,x,y,1,1,0,c_black,1); //Draw White Cape and Shirt, works beautifully.
+draw_sprite_ext(capeNshirt,image_index,x,y,1,1,0,c_purple,1); //Draw White Cape and Shirt, works beautifully.
 draw_self(); //Draw Base
 #region Draw Sword
 if(state="atk" && localFrame > 0){

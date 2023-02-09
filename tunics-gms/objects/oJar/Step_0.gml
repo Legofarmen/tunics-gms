@@ -4,9 +4,8 @@ depth = -y-z;
 switch(state){
 	case "idle":	image_speed = 0; break;
 	case "carried": image_speed = 0; break;
-	case "destroy" : 
-		image_speed = 0; 
-		image_index = image_number-1;
+	case "broken" : 
+		image_speed = 1;
 		depth = 0;
 	break;
 	case "thrown":	
@@ -21,6 +20,8 @@ switch(state){
 			moveX = 0;
 			moveY = 0;
 			image_speed = 1;
+			audio_play_sound(sndJar,0,0);
+			state = "broken";
 		}
 		if(!tile_meeting(x+moveX,y,"collision")){
 				x += moveX;
@@ -29,4 +30,6 @@ switch(state){
 				y += moveY;
 			}
 	break;
+	case "done": 
+		break;
 }

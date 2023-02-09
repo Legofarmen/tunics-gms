@@ -29,21 +29,24 @@ function PlayerStateFree(){
 	if(inputAtk){
 		localFrame = 0;
 		state = "atk";
-		if(state == "atk")audio_play_sound(sndSwing,0,0);
+		if(state == "atk") audio_play_sound(sndSwing,0,0);
 		}
 	
 	//Lift jar/grass/etc
 	var obj = noone;
-	var aim_x = lengthdir_x(16,direction);
-	var aim_y = lengthdir_y(16,direction);
+	var aim_x = lengthdir_x(9,direction);
+	var aim_y = lengthdir_y(9,direction);
 	if(moveX=0 && moveY=0){
-		obj = collision_line(x,y,x+aim_x,y+aim_y,oJar,1,1);
+		obj = collision_line(x,y-6,x+aim_x,y-6+aim_y,oJar,1,1);
 	}
 	
-	if(obj != noone){
+	if(obj != noone && state != "lift"){
+		interact_text = "Lift"
 		if(obj.state=="idle" && inputPressInteract){
 			lift_id = obj;
 			state = "lift";
 		}
+	}else{
+		interact_text = "";
 	}
 }

@@ -3,7 +3,7 @@ event_inherited();
 move = 0;
 state = "idle";
 
-spd = 0.3;
+spd = 0.5;
 hurt = false;
 spawnX = x;
 spawnY = y;
@@ -13,3 +13,4 @@ knockX = 0;
 knockY = 0;
 knockDir = 0;
 knock = false;
+attack_cooldown = 0; //1 segundo (60*1)

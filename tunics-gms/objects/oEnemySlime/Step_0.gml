@@ -1,10 +1,13 @@
 /// @description Inherit (oEnemyPar
 // Inherit the parent event
-var target = collision_circle(x,y,56,oPlayer,false,true);
+var target = collision_circle(x,y,82,oPlayer,false,true);
+if(attack_cooldown > 0) attack_cooldown--;
 
 if(target){
 var	jumpX = lengthdir_x(16,point_direction(x,y,target.x,target.y));
 var	jumpY = lengthdir_y(16,point_direction(x,y,target.x,target.y));
+if(target.x > x) image_xscale =  1;
+if(target.x < x) image_xscale = -1;
 }
 
 
@@ -45,7 +48,7 @@ switch(state){
 		if(target){
 		goalX = target.x;
 		goalY = target.y;
-		if(collision_circle(x,y,32,oPlayer,0,1))
+		if(collision_circle(x,y,48,oPlayer,0,1) && attack_cooldown <= 0)
 			{
 				state = "attack1";
 			}
@@ -58,6 +61,7 @@ switch(state){
 	case "attack1":
 		image_speed = 1;
 		state = "attack2";
+		spd = 1.6;
 		break;
 	
 	case "attack2":
@@ -76,9 +80,6 @@ switch(state){
 	case "attack3":
 		z--;
 		z = clamp(z,0,16);
-		if(z <= 0){
-			state = "alert";
-		}
 		break;
 }
 

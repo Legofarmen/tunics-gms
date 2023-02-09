@@ -1,6 +1,7 @@
-/// @description Insert description here
-// You can write your code in this editor
-
+/// @description Hearts
+if(interact_text != "") {
+	draw_text_shadow(room_x_to_gui(x)+16, room_y_to_gui(y)-8, interact_text);
+   }
 var _vida = life
 var _vidaFrac = frac(_vida); //Gettea el decimal de la _vida
 _vida -= _vidaFrac;
